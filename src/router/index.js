@@ -1,31 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
 import Home from '../pages/Home.vue'
-import MovieDetail from '../pages/MovieDetail.vue'
 import Account from '../pages/Account.vue'
 import Booking from '../pages/Booking.vue'
+import Moviedetail from '../pages/Moviedetail.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: Home
-  },
-  {
-    path: '/movies/:id',
-    name: 'MovieDetail',
-    component: MovieDetail
-  },
-  {
-    path: '/account',
-    name: 'Account',
-    component: Account
-  },
-  {
-    path: '/booking/:showtimeId',
-    name: 'Booking',
-    component: Booking
-  }
+  { path: '/', redirect: '/home' }, 
+  { path: '/home', component: Home },
+  { path: '/account', component: Account },
+  { path: '/booking', component: Booking },
+  { path: '/moviedetail/:id', component: Moviedetail, props: true },
 ]
 
 const router = createRouter({
