@@ -10,23 +10,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="home">
-    <h1 class="text-3xl font-bold mb-4">Now Showing</h1>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div v-for="movie in movies" :key="movie.Movie_ID" class="movie-card">
-        <img :src="movie.Poster_URL || 'placeholder.jpg'" alt="" class="w-full h-auto rounded-lg"/>
-        <h2 class="mt-2 font-semibold">{{ movie.Title }}</h2>
-        <p>{{ movie.genres?.Name }}</p>
+  <div class="container mt-4">
+    <h1 class="mb-4">Now Showing</h1>
+    <div class="row g-3">
+      <div class="col-md-4 col-lg-3" v-for="movie in movies" :key="movie.Movie_ID">
+        <div class="movie-card card h-100 text-white">
+          <img :src="movie.Poster_URL || 'placeholder.jpg'" class="card-img-top" :alt="movie.Title"/>
+          <div class="card-body">
+            <h5 class="card-title">{{ movie.Title }}</h5>
+            <p class="card-text">{{ movie.genres?.Name || 'Genre' }}</p>
+            <p class="card-text">
+              <small class="text-muted">Rating: {{ movie.Rating || 'N/A' }}</small>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.movie-card {
-  background-color: #1f1f1f;
-  padding: 8px;
-  border-radius: 8px;
-  text-align: center;
-}
+/* optional extra spacing or tweaks here */
 </style>

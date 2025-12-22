@@ -1,31 +1,27 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:2112';
+const API_BASE = 'http://localhost:2112'; // backend URL
 
+// Get all movies from backend
 export const getMovies = async () => {
   try {
     const response = await axios.get(`${API_BASE}/movies`);
     return response.data;
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching movies:", err);
     return [];
   }
 };
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY; // store key in .env
-
+// Optional: fetch extra TMDB details if backend exposes a TMDB endpoint
 export const getTMDBMovie = async (title) => {
   try {
-    const response = await axios.get(`https://api.themoviedb.org/3/search/movie`, {
-      params: {
-        api_key: TMDB_API_KEY,
-        query: title,
-      },
+    const response = await axios.get(`${API_BASE}/tmdb`, {
+      params: { title },
     });
-    return response.data.results[0]; // first match
+    return response.data; // expect poster, overview, rating, etc.
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching TMDB data:", err);
     return null;
   }
 };
-
