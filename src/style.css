@@ -1,23 +1,318 @@
-/* src/style.css */
+/* ============================================
+   MOVIEMATE GLOBAL STYLES & THEME
+   ============================================ */
+
+/* CSS VARIABLES - Theme Colors */
+:root {
+  --primary-orange: #ff6b00;
+  --primary-orange-light: #ff9500;
+  --primary-cyan: #00d4ff;
+  --primary-cyan-dark: #0099cc;
+  --bg-dark: #0f0f0f;
+  --bg-darker: #1a1a1a;
+  --bg-card: #242424;
+  --border-dark: #333;
+  --text-light: #ddd;
+  --text-muted: #aaa;
+  --text-accent: #ccc;
+  --transition: all 0.3s ease;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+* {
+  box-sizing: border-box;
+}
+
 body {
-  background-color: #121212;
-  color: #fff;
-  font-family: 'Segoe UI', sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-.movie-card {
-  background-color: #1f1f1f;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform 0.2s;
+/* ============================================
+   SHARED FILTER STYLES
+   ============================================ */
+.filter-section,
+.filters-section,
+.filters-container {
+  background: linear-gradient(135deg, var(--bg-darker), var(--bg-card));
+  padding: 1.5rem 2rem;
+  border-radius: 10px 12px;
+  border: 1px solid var(--border-dark);
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.1);
 }
 
-.movie-card:hover {
-  transform: scale(1.05);
+.filter-label {
+  display: block;
+  color: var(--primary-orange-light);
+  font-weight: 600;
+  margin-bottom: 0.4rem 0.5rem;
+  font-size: 0.9rem 0.95rem;
 }
 
-.movie-card img {
+.filter-select {
+  background-color: var(--bg-dark);
+  border: 2px solid var(--primary-orange);
+  color: white;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: var(--transition);
   width: 100%;
+}
+
+.filter-select:hover,
+.filter-select:focus {
+  border-color: var(--primary-orange-light);
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.3);
+  outline: none;
+}
+
+.filter-select option {
+  background-color: var(--bg-darker);
+  color: white;
+}
+
+.filter-results {
+  color: var(--text-accent);
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.filter-results strong {
+  color: var(--primary-orange-light);
+  font-weight: 700;
+}
+
+/* ============================================
+   CARD STYLES
+   ============================================ */
+.card-base {
+  background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-dark);
+  border-radius: 8px 12px;
+  padding: 1.2rem 1.5rem;
+  transition: var(--transition);
+}
+
+.card-base:hover {
+  border-color: var(--primary-orange);
+  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+  transform: translateY(-4px -5px);
+}
+
+/* ============================================
+   BADGE & BADGE STYLES
+   ============================================ */
+.badge-orange {
+  background-color: var(--primary-orange);
+  color: white;
+  padding: 0.4rem 0.6rem 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-cyan {
+  background: linear-gradient(135deg, var(--primary-cyan), var(--primary-cyan-dark));
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   DETAIL ROW STYLES
+   ============================================ */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  align-items: flex-start;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: white;
+  font-weight: 600;
+  text-align: right;
+  flex-grow: 1;
+}
+
+.detail-icon {
+  font-size: 1.3rem;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* ============================================
+   PRICE & TIME STYLES
+   ============================================ */
+.price-tag,
+.price-value {
+  color: var(--primary-cyan);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.time-display,
+.time-large {
+  color: var(--primary-orange-light);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.time-large {
+  font-size: 1.3rem;
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+.btn-book,
+.btn-book-now {
+  width: 100%;
+  background-color: var(--primary-orange);
+  color: white;
+  border: none;
+  padding: 0.75rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.9rem 1rem;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+}
+
+.btn-book:hover,
+.btn-book-now:hover {
+  background-color: var(--primary-orange-light);
+  transform: scale(1.02);
+  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.4);
+}
+
+/* ============================================
+   PAGINATION STYLES
+   ============================================ */
+.pagination {
+  gap: 0.5rem;
+}
+
+.page-link {
+  background-color: var(--bg-darker);
+  border: 2px solid var(--primary-orange);
+  color: var(--primary-orange-light);
+  font-weight: 600;
+  transition: var(--transition);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.page-link:hover:not(:disabled) {
+  background-color: var(--primary-orange);
+  color: white;
+}
+
+.page-item.active .page-link {
+  background-color: var(--primary-orange);
+  border-color: var(--primary-orange);
+  color: white;
+}
+
+.page-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   EMPTY STATE STYLES
+   ============================================ */
+.no-results,
+.no-showtimes {
+  background: var(--bg-darker);
+  padding: 2rem 3rem;
+  border-radius: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  border: 2px dashed var(--border-dark);
+  font-size: 1.05rem;
+}
+
+/* ============================================
+   ANIMATION
+   ============================================ */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-orange { color: var(--primary-orange); }
+.text-cyan { color: var(--primary-cyan); }
+.text-muted-light { color: var(--text-muted); }
+.text-accent { color: var(--text-accent); }
+
+.bg-darker { background-color: var(--bg-darker); }
+.bg-card { background-color: var(--bg-card); }
+
+.border-orange { border-color: var(--primary-orange); }
+.border-dark { border-color: var(--border-dark); }
+
+.shadow-orange {
+  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+}
+
+.transition-all {
+  transition: var(--transition);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 768px) {
+  .filter-section,
+  .filters-section,
+  .filters-container {
+    padding: 1rem 1.5rem;
+  }
+
+  .detail-row {
+    font-size: 0.85rem;
+  }
+
+  .time-display {
+    font-size: 1.5rem;
+  }
+}
+
   height: 300px;
   object-fit: cover;
 }

@@ -10,18 +10,69 @@ const movie = ref(null);
 const showtimes = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const selectedTheatre = ref('all');
+const selectedDate = ref('all');
+const currentPage = ref(1);
+const itemsPerPage = 5;
 
+// Extract unique dates from showtimes
+const uniqueDates = computed(() => {
+  const dates = [...new Set(showtimes.value.map(s => s.Show_Date?.split('T')[0]).filter(Boolean))];
+  return [
+    { id: 'all', label: 'All Dates' },
+    ...dates.sort().map(date => ({
+      id: date,
+      label: new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+    }))
+  ];
+});
+
+// Extract unique theatres from showtimes
+const uniqueTheatres = computed(() => {
+  const theatreMap = {};
+  showtimes.value.forEach(show => {
+    if (show.theaters && !theatreMap[show.Theater_ID]) {
+      theatreMap[show.Theater_ID] = show.theaters;
+    }
+  });
+  return Object.values(theatreMap);
+});
+
+// Filtered showtimes based on selection
+const filteredShowtimes = computed(() => {
+  return showtimes.value.filter(showtime => {
+    const dateMatch = selectedDate.value === 'all' || showtime.Show_Date?.split('T')[0] === selectedDate.value;
+    let theatreMatch = true;
+    
+    if (selectedTheatre.value !== 'all') {
+      theatreMatch = showtime.Theater_ID === parseInt(selectedTheatre.value);
+    }
+    
+    return dateMatch && theatreMatch;
+  });
+});
+
+// Group filtered showtimes by date
 const groupedShowtimes = computed(() => {
   const grouped = {};
-  showtimes.value.forEach(show => {
+  filteredShowtimes.value.forEach(show => {
     const date = show.Show_Date?.split('T')[0] || 'Unknown';
     if (!grouped[date]) {
       grouped[date] = { date, shows: [] };
     }
     grouped[date].shows.push(show);
   });
-  // Sort by date
   return Object.values(grouped).sort((a, b) => new Date(a.date) - new Date(b.date));
+});
+
+// Paginate the grouped dates
+const paginatedGroups = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  return groupedShowtimes.value.slice(start, start + itemsPerPage);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(groupedShowtimes.value.length / itemsPerPage);
 });
 
 const formatDate = (dateStr) => {
@@ -30,14 +81,46 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 };
 
+const getTheatreName = (theatreObj) => {
+  return theatreObj?.Name || 'Unknown Theatre';
+};
+
+const getTheatreCity = (theatreObj) => {
+  return theatreObj?.City || 'Unknown';
+};
+
+const getFormatName = (formatObj) => {
+  return formatObj?.Name || 'Standard';
+};
+
+const getTimeOnly = (timeStr) => {
+  if (!timeStr) return '00:00';
+  // Extract HH:MM from ISO timestamp like "1970-01-01T11:00:00.000Z"
+  const match = timeStr.match(/T(\d{2}:\d{2})/);
+  if (match) {
+    return match[1];
+  }
+  // Fallback for HH:MM:SS format
+  return timeStr.split('.')[0].substring(0, 5);
+};
+
 onMounted(async () => {
   try {
     console.log('Fetching movie with ID:', movieId);
-    movie.value = await getMovieById(movieId);
+    const [movieData, showtimesData] = await Promise.all([
+      getMovieById(movieId),
+      getShowtimesByMovie(movieId)
+    ]);
+    
+    movie.value = movieData;
+    showtimes.value = showtimesData;
+    
     console.log('Movie data:', movie.value);
-    console.log('Genres data:', movie.value?.genres);
-    if (movie.value) {
-      showtimes.value = await getShowtimesByMovie(movieId);
+    console.log('Showtimes data:', showtimesData);
+    
+    if (showtimesData && showtimesData.length > 0) {
+      console.log('First showtime:', JSON.stringify(showtimesData[0]));
+      console.log('Theatre in showtime:', showtimesData[0].theaters);
     }
   } catch (err) {
     error.value = err.message;
@@ -108,20 +191,47 @@ onMounted(async () => {
               <div class="showtimes-section mt-5">
                 <h5 class="section-title">Available Showtimes</h5>
                 
-                <div v-if="showtimes.length" class="showtimes-container">
-                  <!-- Group by Date -->
-                  <div v-for="dateGroup in groupedShowtimes" :key="dateGroup.date" class="date-group">
+                <!-- Filters -->
+                <div class="filters-container">
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label class="filter-label">🎭 Theatre</label>
+                      <select v-model="selectedTheatre" class="form-select filter-select">
+                        <option value="all">All Theatres</option>
+                        <option v-for="theatre in uniqueTheatres" :key="theatre.Theatre_ID" :value="theatre.Theatre_ID">
+                          {{ theatre.Name }} - {{ theatre.City }}
+                        </option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="filter-label">📅 Date</label>
+                      <select v-model="selectedDate" class="form-select filter-select">
+                        <option v-for="date in uniqueDates" :key="date.id" :value="date.id">
+                          {{ date.label }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-if="showtimes.length" class="showtimes-wrapper">
+                  <!-- Showtimes Grid by Date -->
+                  <div v-for="dateGroup in paginatedGroups" :key="dateGroup.date" class="date-group">
                     <h6 class="date-header">{{ formatDate(dateGroup.date) }}</h6>
                     <div class="showtimes-grid">
                       <div v-for="show in dateGroup.shows" :key="show.Showtime_ID" class="showtime-card">
                         <div class="showtime-header">
-                          <div class="time-display">{{ show.Start_Time }}</div>
-                          <div class="format-badge">{{ show.format?.Name || 'Standard' }}</div>
+                          <div class="time-display">{{ getTimeOnly(show.Start_Time) }}</div>
+                          <div class="format-badge">{{ getFormatName(show.formats) }}</div>
                         </div>
                         <div class="showtime-details">
                           <div class="detail-row">
-                            <span class="detail-label">Theater:</span>
-                            <span class="detail-value">{{ show.theater?.Name || 'Unknown' }}</span>
+                            <span class="detail-label">Theatre:</span>
+                            <span class="detail-value">{{ getTheatreName(show.theaters) }}</span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">{{ getTheatreCity(show.theaters) }}</span>
                           </div>
                           <div class="detail-row">
                             <span class="detail-label">Price:</span>
@@ -132,9 +242,32 @@ onMounted(async () => {
                       </div>
                     </div>
                   </div>
+
+                  <!-- Pagination -->
+                  <div v-if="totalPages > 1" class="pagination-section mt-4">
+                    <nav aria-label="Page navigation">
+                      <ul class="pagination justify-content-center">
+                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                          <button class="page-link" @click="currentPage = 1" :disabled="currentPage === 1">First</button>
+                        </li>
+                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Previous</button>
+                        </li>
+                        <li v-for="page in totalPages" :key="page" class="page-item" :class="{ active: currentPage === page }">
+                          <button class="page-link" @click="currentPage = page">{{ page }}</button>
+                        </li>
+                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">Next</button>
+                        </li>
+                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                          <button class="page-link" @click="currentPage = totalPages" :disabled="currentPage === totalPages">Last</button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
                 </div>
                 <div v-else class="no-showtimes">
-                  <p>🎬 No showtimes available at the moment.</p>
+                  <p>🎬 No showtimes available.</p>
                 </div>
               </div>
             </div>
@@ -152,28 +285,16 @@ onMounted(async () => {
 
 <style scoped>
 .detail-container {
-  background: #0f0f0f;
+  background: var(--bg-dark);
   min-height: 100vh;
   padding-bottom: 3rem;
-}
-
-.movie-detail {
-  background: #0f0f0f;
-}
-
-.poster-section {
-  position: relative;
 }
 
 .poster-img {
   width: 100%;
   border-radius: 12px;
   box-shadow: 0 8px 25px rgba(255, 107, 0, 0.4);
-  border: 2px solid #ff6b00;
-}
-
-.details-section {
-  color: white;
+  border: 2px solid var(--primary-orange);
 }
 
 .movie-title {
@@ -193,7 +314,7 @@ onMounted(async () => {
 }
 
 .badge-genre {
-  background-color: #ff6b00;
+  background-color: var(--primary-orange);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
@@ -208,10 +329,10 @@ onMounted(async () => {
 }
 
 .description-section {
-  background: #1a1a1a;
+  background: var(--bg-darker);
   padding: 1.5rem;
   border-radius: 8px;
-  border-left: 4px solid #ff6b00;
+  border-left: 4px solid var(--primary-orange);
 }
 
 .section-title {
@@ -225,7 +346,7 @@ onMounted(async () => {
 
 .section-title::before {
   content: '▶';
-  color: #ff6b00;
+  color: var(--primary-orange);
   margin-right: 0.5rem;
 }
 
@@ -236,37 +357,20 @@ onMounted(async () => {
   margin: 0;
 }
 
-.showtimes-section {
-  margin-top: 3rem;
-}
-
-.showtimes-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-}
-
-.date-group {
+.showtimes-wrapper {
   animation: slideIn 0.3s ease-out;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.date-group {
+  margin-bottom: 2.5rem;
 }
 
 .date-header {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #ff9500;
+  color: var(--primary-orange-light);
   padding-bottom: 1rem;
-  border-bottom: 2px solid #ff6b00;
+  border-bottom: 2px solid var(--primary-orange);
   margin-bottom: 1.5rem;
 }
 
@@ -277,18 +381,18 @@ onMounted(async () => {
 }
 
 .showtime-card {
-  background: linear-gradient(135deg, #1a1a1a 0%, #242424 100%);
-  border: 2px solid #333;
+  background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-card) 100%);
+  border: 2px solid var(--border-dark);
   border-radius: 10px;
   padding: 1.2rem;
-  transition: all 0.3s ease;
+  transition: var(--transition);
   display: flex;
   flex-direction: column;
   cursor: pointer;
 }
 
 .showtime-card:hover {
-  border-color: #ff6b00;
+  border-color: var(--primary-orange);
   box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
   transform: translateY(-4px);
 }
@@ -305,12 +409,12 @@ onMounted(async () => {
 .time-display {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #ff9500;
+  color: var(--primary-orange-light);
   letter-spacing: 2px;
 }
 
 .format-badge {
-  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  background: linear-gradient(135deg, var(--primary-cyan), var(--primary-cyan-dark));
   color: white;
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
@@ -324,54 +428,10 @@ onMounted(async () => {
   margin-bottom: 1rem;
 }
 
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  font-size: 0.95rem;
-}
-
-.detail-label {
-  color: #aaa;
-  font-weight: 500;
-}
-
-.detail-value {
-  color: #fff;
-  font-weight: 600;
-}
-
 .price-tag {
-  color: #00d4ff;
+  color: var(--primary-cyan);
   font-weight: 700;
   font-size: 1.1rem;
-}
-
-.btn-book {
-  width: 100%;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 0.75rem;
-  background-color: #ff6b00;
-  border: none;
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.btn-book:hover {
-  background-color: #ff9500;
-  transform: scale(1.02);
-}
-
-.no-showtimes {
-  background: #1a1a1a;
-  padding: 3rem 2rem;
-  border-radius: 8px;
-  text-align: center;
-  color: #999;
-  border: 2px dashed #333;
-  font-size: 1.05rem;
 }
 
 @media (max-width: 768px) {

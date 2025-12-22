@@ -4,7 +4,6 @@ import { getMovies } from '../services/api';
 
 const movies = ref([]);
 const selectedGenre = ref('all');
-const selectedLocation = ref('all');
 const currentPage = ref(1);
 const moviesPerPage = 8;
 
@@ -91,19 +90,11 @@ const totalPages = computed(() => {
       <!-- Filter Section -->
       <div class="filter-section mb-5">
         <div class="row g-3">
-          <div class="col-md-6">
+          <div class="col-md-12">
             <label class="filter-label">🎬 Filter by Genre</label>
             <select v-model="selectedGenre" class="form-select filter-select">
               <option v-for="genre in genres" :key="genre.id" :value="genre.id">
                 {{ genre.name }}
-              </option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="filter-label">📍 Filter by Location</label>
-            <select v-model="selectedLocation" class="form-select filter-select">
-              <option v-for="location in locations" :key="location.id" :value="location.id">
-                {{ location.name }}
               </option>
             </select>
           </div>
@@ -183,52 +174,6 @@ const totalPages = computed(() => {
   width: 100%;
 }
 
-.filter-section {
-  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-  padding: 2rem;
-  border-radius: 12px;
-  border: 1px solid #333;
-  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.1);
-}
-
-.filter-label {
-  display: block;
-  color: #ff9500;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-}
-
-.filter-select {
-  background-color: #0f0f0f;
-  border: 2px solid #ff6b00;
-  color: white;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.filter-select:hover,
-.filter-select:focus {
-  border-color: #ff9500;
-  box-shadow: 0 0 10px rgba(255, 107, 0, 0.3);
-}
-
-.filter-select option {
-  background-color: #1a1a1a;
-  color: white;
-}
-
-.filter-results {
-  color: #ccc;
-  font-size: 0.95rem;
-}
-
-.filter-results strong {
-  color: #ff9500;
-}
-
 .movie-card {
   background: #1a1a1a;
   color: white;
@@ -283,11 +228,6 @@ const totalPages = computed(() => {
   line-height: 1.3;
 }
 
-.badge {
-  font-size: 0.75rem;
-  padding: 0.4rem 0.6rem;
-}
-
 .movie-info {
   display: flex;
   gap: 1rem;
@@ -306,40 +246,5 @@ const totalPages = computed(() => {
 .info-value {
   color: #00d4ff;
   font-weight: 700;
-}
-
-.pagination-section {
-  display: flex;
-  justify-content: center;
-}
-
-.pagination {
-  gap: 0.5rem;
-}
-
-.page-link {
-  background-color: #1a1a1a;
-  border: 2px solid #ff6b00;
-  color: #ff9500;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-}
-
-.page-link:hover:not(:disabled) {
-  background-color: #ff6b00;
-  color: white;
-}
-
-.page-item.active .page-link {
-  background-color: #ff6b00;
-  border-color: #ff6b00;
-  color: white;
-}
-
-.page-link:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

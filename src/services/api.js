@@ -36,3 +36,36 @@ export const getShowtimesByMovie = async (id) => {
     return [];
   }
 };
+
+// Fetch all showtimes
+export const getAllShowtimes = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/showtimes`);
+    return response.data;
+  } catch (err) {
+    console.error('Error fetching showtimes:', err);
+    return [];
+  }
+};
+
+// Fetch all theatres
+export const getTheatres = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/theatres`);
+    return response.data;
+  } catch (err) {
+    console.error('Error fetching theatres:', err);
+    return [];
+  }
+};
+
+// Fetch all bookings
+export const getAllBookings = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/bookings`);
+    return response.data;
+  } catch (err) {
+    console.error('Error fetching bookings:', err);
+    return [];
+  }
+};
