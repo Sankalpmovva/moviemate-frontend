@@ -1,20 +1,19 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../pages/Home.vue'
-import Account from '../pages/Account.vue'
-import Booking from '../pages/Booking.vue'
-import Moviedetail from '../pages/Moviedetail.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import Home from '../pages/Home.vue';
+import MovieDetail from '../pages/Moviedetail.vue';
+import Account from '../pages/Account.vue';
+import Bookings from '../pages/Booking.vue';
 
 const routes = [
-  { path: '/', redirect: '/home' }, 
-  { path: '/home', component: Home },
+  { path: '/', component: Home },
+  { path: '/movie/:id', component: MovieDetail },
   { path: '/account', component: Account },
-  { path: '/booking', component: Booking },
-  { path: '/moviedetail/:id', component: Moviedetail, props: true },
-]
+  { path: '/bookings', component: Bookings },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
-export default router
+export default router;
