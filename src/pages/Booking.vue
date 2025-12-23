@@ -1,59 +1,153 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getUser } from '../services/auth';
-import axios from 'axios';
+import { useAuth, getUserBookings } from '../services/auth.js';
+import { useRouter } from 'vue-router';
 
-const API_BASE = 'http://localhost:2112';
+const { user, isLoggedIn } = useAuth();
+const router = useRouter();
 
 const bookings = ref([]);
-const user = getUser();
+const loading = ref(true);
+const error = ref(null);
 
 onMounted(async () => {
-  if (user) {
-    try {
-      const res = await axios.get(`${API_BASE}/bookings`, {
-        params: { accountId: user.Account_ID }
-      });
-      bookings.value = res.data || [];
-    } catch (err) {
-      console.error(err);
-    }
+  if (!isLoggedIn.value || !user.value) {
+    router.push('/login');
+    return;
+  }
+
+  try {
+    const data = await getUserBookings(user.value.accountId);
+    bookings.value = data || [];
+  } catch (err) {
+    error.value = 'Failed to load bookings';
+    console.error('Error fetching bookings:', err);
+  } finally {
+    loading.value = false;
   }
 });
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'Unknown';
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return '00:00';
+  const match = timeStr.match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : timeStr.substring(0, 5);
+};
 </script>
 
 <template>
   <div class="container mt-4">
     <h2>My Bookings</h2>
-    <div v-if="!user">
-      <p>Please login to see your bookings.</p>
+    <p class="text-muted">View all your movie bookings</p>
+
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     </div>
-    <div v-else-if="bookings.length === 0">
-      <p>You have not made any bookings yet.</p>
+
+    <div v-else-if="error" class="alert alert-danger">
+      {{ error }}
     </div>
-    <div v-else>
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Movie</th>
-            <th>Theater</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Tickets</th>
-            <th>Price (€)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="b in bookings" :key="b.Booking_ID">
-            <td>{{ b.movie.Title }}</td>
-            <td>{{ b.theater.Name }}</td>
-            <td>{{ b.Show_Date }}</td>
-            <td>{{ b.Start_Time }}</td>
-            <td>{{ b.Number_of_Tickets }}</td>
-            <td>{{ b.Total_Price.toFixed(2) }}</td>
-          </tr>
-        </tbody>
-      </table>
+
+    <div v-else-if="bookings.length === 0" class="alert alert-info">
+      You don't have any bookings yet. <router-link to="/">Browse movies</router-link> to make your first booking!
+    </div>
+
+    <div v-else class="bookings-list">
+      <div v-for="booking in bookings" :key="booking.Booking_ID" class="booking-card">
+        <div class="booking-header">
+          <h5>{{ booking.showtimes?.movies?.Title || 'Unknown Movie' }}</h5>
+          <span class="badge bg-success">Confirmed</span>
+        </div>
+        <div class="booking-details">
+          <div class="detail-item">
+            <strong>Date:</strong> {{ formatDate(booking.showtimes?.Show_Date) }}
+          </div>
+          <div class="detail-item">
+            <strong>Time:</strong> {{ formatTime(booking.showtimes?.Start_Time) }}
+          </div>
+          <div class="detail-item">
+            <strong>Theatre:</strong> {{ booking.showtimes?.theaters?.Name || 'Unknown' }}, {{ booking.showtimes?.theaters?.City || 'Unknown' }}
+          </div>
+          <div class="detail-item">
+            <strong>Format:</strong> {{ booking.showtimes?.formats?.Name || 'Standard' }}
+          </div>
+          <div class="detail-item">
+            <strong>Tickets:</strong> {{ booking.Tickets }}
+          </div>
+          <div class="detail-item">
+            <strong>Total Paid:</strong> <span class="price">€{{ parseFloat(booking.Total_Price).toFixed(2) }}</span>
+          </div>
+          <div class="detail-item">
+            <strong>Booked on:</strong> {{ formatDate(booking.Booking_Date) }}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.bookings-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.booking-card {
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.booking-card:hover {
+  border-color: var(--primary-orange);
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #333;
+}
+
+.booking-header h5 {
+  margin: 0;
+  color: #fff;
+}
+
+.booking-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.detail-item {
+  color: #ddd;
+}
+
+.detail-item strong {
+  color: #999;
+  margin-right: 0.5rem;
+}
+
+.price {
+  color: var(--primary-cyan);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+</style>
