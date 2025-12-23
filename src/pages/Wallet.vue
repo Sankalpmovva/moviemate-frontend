@@ -1,28 +1,50 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getUser, addBalance } from '../services/auth';
+import { useAuth, getAccount, addBalance } from '../services/auth.js';
+import { useRouter } from 'vue-router';
 
-const user = ref({});
+const { user } = useAuth();
+const router = useRouter();
+
 const balance = ref(0);
+const loading = ref(false);
+const message = ref('');
 
-onMounted(() => {
-  const u = getUser();
-  if (u) {
-    user.value = u;
-    balance.value = u.Account_Balance || 0;
+// Load wallet balance
+onMounted(async () => {
+  if (!user.value || !user.value.accountId) {
+    return;
+  }
+  
+  try {
+    const accountData = await getAccount(user.value.accountId);
+    if (accountData) {
+      balance.value = accountData.Account_Balance || 0;
+    }
+  } catch (err) {
+    console.error('Error fetching wallet balance:', err);
   }
 });
 
+// Add funds to wallet
 const addFunds = async () => {
+  loading.value = true;
+  message.value = '';
+  
   try {
-    const res = await addBalance(user.value.Account_ID, 50);
-    if (res?.newBalance !== undefined) {
+    const res = await addBalance(user.value.accountId, 50);
+    if (res && res.newBalance !== undefined) {
       balance.value = res.newBalance;
-      alert('Added 50€ to wallet!');
+      message.value = 'Successfully added €50 to your wallet!';
+      setTimeout(() => {
+        message.value = '';
+      }, 3000);
     }
   } catch (err) {
     console.error(err);
-    alert('Failed to add balance');
+    message.value = 'Failed to add balance. Please try again.';
+  } finally {
+    loading.value = false;
   }
 };
 </script>
@@ -30,7 +52,21 @@ const addFunds = async () => {
 <template>
   <div class="container mt-4">
     <h2>Wallet</h2>
-    <p><strong>Current Balance:</strong> €{{ balance.toFixed(2) }}</p>
-    <button class="btn btn-success" @click="addFunds">Add €50</button>
+    <p class="text-muted">Manage your MovieMate wallet balance</p>
+    
+    <div v-if="message" class="alert" :class="message.includes('Failed') ? 'alert-danger' : 'alert-success'">
+      {{ message }}
+    </div>
+    
+    <div class="card mb-4" style="max-width: 400px;">
+      <div class="card-body">
+        <h5 class="card-title">Current Balance</h5>
+        <h2 class="card-text text-success">€{{ balance.toFixed(2) }}</h2>
+      </div>
+    </div>
+    
+    <button class="btn btn-success" @click="addFunds" :disabled="loading">
+      {{ loading ? 'Processing...' : 'Add €50' }}
+    </button>
   </div>
 </template>

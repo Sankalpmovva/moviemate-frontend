@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useAuth, getAccount, updateAccount } from '../services/auth.js';
 import { useRouter } from 'vue-router';
 
-const { user, isLoggedIn, logout } = useAuth();
+const { user, logout } = useAuth();
 const router = useRouter();
 
 const firstName = ref('');
@@ -11,15 +11,9 @@ const lastName = ref('');
 const email = ref('');
 const message = ref('');
 
-// Check if logged in before mounting
-if (!isLoggedIn.value) {
-  router.push('/login');
-}
-
 // Load account info
 onMounted(async () => {
   if (!user.value || !user.value.accountId) {
-    router.push('/login');
     return;
   }
   
@@ -59,20 +53,22 @@ const handleLogout = () => {
 
 <template>
   <div class="container mt-4">
-    <h2>Your Account</h2>
+    <h2>Account Settings</h2>
+    <p class="text-muted">View and update your account details</p>
     <div v-if="message" class="alert alert-success">{{ message }}</div>
     <form @submit.prevent="saveChanges">
       <div class="mb-3">
         <label class="form-label">First Name</label>
-        <input v-model="firstName" type="text" class="form-control" />
+        <input v-model="firstName" type="text" class="form-control" required />
       </div>
       <div class="mb-3">
         <label class="form-label">Last Name</label>
-        <input v-model="lastName" type="text" class="form-control" />
+        <input v-model="lastName" type="text" class="form-control" required />
       </div>
       <div class="mb-3">
         <label class="form-label">Email</label>
         <input v-model="email" type="email" class="form-control" disabled />
+        <small class="form-text text-muted">Email cannot be changed</small>
       </div>
       <button type="submit" class="btn btn-primary">Save Changes</button>
     </form>

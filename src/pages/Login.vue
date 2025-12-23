@@ -6,7 +6,7 @@ import { useAuth } from '../services/auth.js';
 const email = ref('');
 const password = ref('');
 const error = ref('');
-const loading = ref(false);  // Changed from '' to false
+const loading = ref(false);
 
 const router = useRouter();
 const { login } = useAuth();
@@ -17,7 +17,7 @@ const submit = async () => {
   
   try {
     await login(email.value, password.value);
-    router.push('/account');
+    router.push('/');  // Redirect to home page after successful login
   } catch (err) {
     error.value = err.response?.data?.error || 'Login failed';
   } finally {
