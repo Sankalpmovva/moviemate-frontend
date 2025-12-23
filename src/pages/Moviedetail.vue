@@ -1,10 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { getMovieById, getShowtimesByMovie } from '../services/api';
+import { useAuth, getAccount, createBooking } from '../services/auth.js';
 
 const route = useRoute();
+const router = useRouter();
 const movieId = route.params.id;
+
+const { user, isLoggedIn } = useAuth();
 
 const movie = ref(null);
 const showtimes = ref([]);
@@ -14,6 +18,14 @@ const selectedTheatre = ref('all');
 const selectedDate = ref('all');
 const currentPage = ref(1);
 const itemsPerPage = 5;
+
+// Booking modal state
+const showBookingModal = ref(false);
+const selectedShowtime = ref(null);
+const ticketCount = ref(1);
+const userBalance = ref(0);
+const bookingLoading = ref(false);
+const bookingMessage = ref('');
 
 // Extract unique dates from showtimes
 const uniqueDates = computed(() => {
@@ -75,6 +87,15 @@ const totalPages = computed(() => {
   return Math.ceil(groupedShowtimes.value.length / itemsPerPage);
 });
 
+const totalPrice = computed(() => {
+  if (!selectedShowtime.value) return 0;
+  return parseFloat(selectedShowtime.value.Price) * ticketCount.value;
+});
+
+const hasInsufficientBalance = computed(() => {
+  return totalPrice.value > userBalance.value;
+});
+
 const formatDate = (dateStr) => {
   if (!dateStr) return 'Unknown Date';
   const date = new Date(dateStr + 'T00:00:00');
@@ -95,18 +116,77 @@ const getFormatName = (formatObj) => {
 
 const getTimeOnly = (timeStr) => {
   if (!timeStr) return '00:00';
-  // Extract HH:MM from ISO timestamp like "1970-01-01T11:00:00.000Z"
   const match = timeStr.match(/T(\d{2}:\d{2})/);
   if (match) {
     return match[1];
   }
-  // Fallback for HH:MM:SS format
   return timeStr.split('.')[0].substring(0, 5);
+};
+
+const openBookingModal = async (show) => {
+  if (!isLoggedIn.value) {
+    router.push('/login');
+    return;
+  }
+
+  selectedShowtime.value = show;
+  ticketCount.value = 1;
+  bookingMessage.value = '';
+  
+  // Fetch current balance
+  try {
+    const accountData = await getAccount(user.value.accountId);
+    if (accountData) {
+      userBalance.value = parseFloat(accountData.Account_Balance) || 0;
+    }
+  } catch (err) {
+    console.error('Error fetching balance:', err);
+    userBalance.value = 0;
+  }
+  
+  showBookingModal.value = true;
+};
+
+const closeBookingModal = () => {
+  showBookingModal.value = false;
+  selectedShowtime.value = null;
+  ticketCount.value = 1;
+  bookingMessage.value = '';
+};
+
+const confirmBooking = async () => {
+  if (!selectedShowtime.value || !user.value) return;
+  
+  bookingLoading.value = true;
+  bookingMessage.value = '';
+  
+  try {
+    const result = await createBooking(
+      selectedShowtime.value.Show_ID,
+      user.value.accountId,
+      ticketCount.value,
+      totalPrice.value
+    );
+    
+    bookingMessage.value = 'Booking successful! Redirecting to your bookings...';
+    
+    setTimeout(() => {
+      closeBookingModal();
+      router.push('/bookings');
+    }, 2000);
+  } catch (err) {
+    if (err.response?.data?.error === 'Insufficient balance') {
+      bookingMessage.value = `Insufficient balance. You need €${totalPrice.value.toFixed(2)} but have €${userBalance.value.toFixed(2)}. Please add funds to your wallet.`;
+    } else {
+      bookingMessage.value = err.response?.data?.error || 'Booking failed. Please try again.';
+    }
+  } finally {
+    bookingLoading.value = false;
+  }
 };
 
 onMounted(async () => {
   try {
-    console.log('Fetching movie with ID:', movieId);
     const [movieData, showtimesData] = await Promise.all([
       getMovieById(movieId),
       getShowtimesByMovie(movieId)
@@ -114,14 +194,6 @@ onMounted(async () => {
     
     movie.value = movieData;
     showtimes.value = showtimesData;
-    
-    console.log('Movie data:', movie.value);
-    console.log('Showtimes data:', showtimesData);
-    
-    if (showtimesData && showtimesData.length > 0) {
-      console.log('First showtime:', JSON.stringify(showtimesData[0]));
-      console.log('Theatre in showtime:', showtimesData[0].theaters);
-    }
   } catch (err) {
     error.value = err.message;
     console.error('Error loading movie:', err);
@@ -133,7 +205,7 @@ onMounted(async () => {
 
 <template>
   <div class="detail-container">
-    <!-- Back Button & Loading -->
+    <!-- Loading -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status" style="color: #ff6b00;">
         <span class="visually-hidden">Loading...</span>
@@ -219,7 +291,7 @@ onMounted(async () => {
                   <div v-for="dateGroup in paginatedGroups" :key="dateGroup.date" class="date-group">
                     <h6 class="date-header">{{ formatDate(dateGroup.date) }}</h6>
                     <div class="showtimes-grid">
-                      <div v-for="show in dateGroup.shows" :key="show.Showtime_ID" class="showtime-card">
+                      <div v-for="show in dateGroup.shows" :key="show.Show_ID" class="showtime-card">
                         <div class="showtime-header">
                           <div class="time-display">{{ getTimeOnly(show.Start_Time) }}</div>
                           <div class="format-badge">{{ getFormatName(show.formats) }}</div>
@@ -238,7 +310,9 @@ onMounted(async () => {
                             <span class="price-tag">€{{ parseFloat(show.Price).toFixed(2) }}</span>
                           </div>
                         </div>
-                        <button class="btn btn-warning btn-book">BOOK SEAT</button>
+                        <button class="btn btn-warning btn-book" @click="openBookingModal(show)">
+                          BOOK SEAT
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -267,7 +341,7 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div v-else class="no-showtimes">
-                  <p>No showtimes available.</p>
+                  <p>🎬 No showtimes available.</p>
                 </div>
               </div>
             </div>
@@ -279,6 +353,69 @@ onMounted(async () => {
     <!-- Not Found State -->
     <div v-else class="alert alert-warning m-4">
       <p>No movie data found for ID {{ movieId }}</p>
+    </div>
+
+    <!-- Booking Modal -->
+    <div v-if="showBookingModal" class="modal-overlay" @click="closeBookingModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h4>Book Your Seats</h4>
+          <button class="btn-close" @click="closeBookingModal">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <div v-if="selectedShowtime">
+            <div class="booking-details">
+              <h5>{{ movie.Title }}</h5>
+              <p><strong>Date:</strong> {{ formatDate(selectedShowtime.Show_Date?.split('T')[0]) }}</p>
+              <p><strong>Time:</strong> {{ getTimeOnly(selectedShowtime.Start_Time) }}</p>
+              <p><strong>Theatre:</strong> {{ getTheatreName(selectedShowtime.theaters) }}, {{ getTheatreCity(selectedShowtime.theaters) }}</p>
+              <p><strong>Format:</strong> {{ getFormatName(selectedShowtime.formats) }}</p>
+              <p><strong>Price per ticket:</strong> €{{ parseFloat(selectedShowtime.Price).toFixed(2) }}</p>
+            </div>
+            
+            <div class="ticket-selector mt-4">
+              <label class="form-label"><strong>Number of Tickets:</strong></label>
+              <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-outline-secondary" @click="ticketCount = Math.max(1, ticketCount - 1)" :disabled="ticketCount <= 1">-</button>
+                <span class="ticket-count">{{ ticketCount }}</span>
+                <button class="btn btn-outline-secondary" @click="ticketCount = Math.min(10, ticketCount + 1)" :disabled="ticketCount >= 10">+</button>
+              </div>
+            </div>
+            
+            <div class="payment-summary mt-4">
+              <div class="summary-row">
+                <span>Your Balance:</span>
+                <span class="balance-amount">€{{ userBalance.toFixed(2) }}</span>
+              </div>
+              <div class="summary-row total-row">
+                <span>Total Price:</span>
+                <span class="total-amount">€{{ totalPrice.toFixed(2) }}</span>
+              </div>
+              <div v-if="hasInsufficientBalance" class="alert alert-warning mt-3">
+                <strong>Insufficient Balance!</strong><br>
+                You need €{{ (totalPrice - userBalance).toFixed(2) }} more. 
+                <router-link to="/wallet" @click="closeBookingModal">Add funds to wallet</router-link>
+              </div>
+            </div>
+            
+            <div v-if="bookingMessage" class="alert mt-3" :class="bookingMessage.includes('successful') ? 'alert-success' : 'alert-danger'">
+              {{ bookingMessage }}
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" @click="closeBookingModal">Cancel</button>
+          <button 
+            class="btn btn-success" 
+            @click="confirmBooking" 
+            :disabled="bookingLoading || hasInsufficientBalance"
+          >
+            {{ bookingLoading ? 'Processing...' : 'Confirm Booking' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -382,74 +519,190 @@ onMounted(async () => {
 
 .showtime-card {
   background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-card) 100%);
-  border: 2px solid var(--border-dark);
-  border-radius: 10px;
-  padding: 1.2rem;
-  transition: var(--transition);
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
+border: 2px solid var(--border-dark);
+border-radius: 10px;
+padding: 1.2rem;
+transition: var(--transition);
+display: flex;
+flex-direction: column;
+cursor: pointer;
 }
-
 .showtime-card:hover {
-  border-color: var(--primary-orange);
-  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
-  transform: translateY(-4px);
+border-color: var(--primary-orange);
+box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+transform: translateY(-4px);
 }
-
 .showtime-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #444;
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 1rem;
+padding-bottom: 1rem;
+border-bottom: 1px solid #444;
 }
-
 .time-display {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--primary-orange-light);
-  letter-spacing: 2px;
+font-size: 1.8rem;
+font-weight: 700;
+color: var(--primary-orange-light);
+letter-spacing: 2px;
 }
-
 .format-badge {
-  background: linear-gradient(135deg, var(--primary-cyan), var(--primary-cyan-dark));
-  color: white;
-  padding: 0.35rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
+background: linear-gradient(135deg, var(--primary-cyan), var(--primary-cyan-dark));
+color: white;
+padding: 0.35rem 0.75rem;
+border-radius: 20px;
+font-size: 0.75rem;
+font-weight: 700;
+text-transform: uppercase;
 }
-
 .showtime-details {
-  flex-grow: 1;
-  margin-bottom: 1rem;
+flex-grow: 1;
+margin-bottom: 1rem;
 }
-
+.detail-row {
+display: flex;
+justify-content: space-between;
+margin-bottom: 0.5rem;
+}
+.detail-label {
+color: #999;
+font-size: 0.9rem;
+}
+.detail-value {
+color: #fff;
+font-weight: 500;
+font-size: 0.9rem;
+}
 .price-tag {
-  color: var(--primary-cyan);
-  font-weight: 700;
-  font-size: 1.1rem;
+color: var(--primary-cyan);
+font-weight: 700;
+font-size: 1.1rem;
 }
-
+.btn-book {
+width: 100%;
+font-weight: 700;
+padding: 0.75rem;
+border-radius: 8px;
+transition: all 0.3s ease;
+}
+.btn-book:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+/* Modal Styles */
+.modal-overlay {
+position: fixed;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(0, 0, 0, 0.8);
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 1000;
+padding: 1rem;
+}
+.modal-content {
+background: #1a1a1a;
+border-radius: 12px;
+max-width: 600px;
+width: 100%;
+max-height: 90vh;
+overflow-y: auto;
+box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+.modal-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 1.5rem;
+border-bottom: 2px solid #333;
+}
+.modal-header h4 {
+margin: 0;
+color: #fff;
+}
+.btn-close {
+background: transparent;
+border: none;
+color: #fff;
+font-size: 2rem;
+cursor: pointer;
+line-height: 1;
+padding: 0;
+width: 30px;
+height: 30px;
+}
+.modal-body {
+padding: 1.5rem;
+color: #fff;
+}
+.booking-details p {
+margin-bottom: 0.5rem;
+color: #ddd;
+}
+.ticket-selector {
+padding: 1rem;
+background: #242424;
+border-radius: 8px;
+}
+.ticket-count {
+font-size: 1.5rem;
+font-weight: 700;
+color: #fff;
+min-width: 40px;
+text-align: center;
+}
+.payment-summary {
+padding: 1rem;
+background: #242424;
+border-radius: 8px;
+}
+.summary-row {
+display: flex;
+justify-content: space-between;
+margin-bottom: 0.75rem;
+color: #ddd;
+}
+.total-row {
+font-size: 1.2rem;
+font-weight: 700;
+padding-top: 0.75rem;
+border-top: 2px solid #444;
+color: #fff;
+}
+.balance-amount {
+color: #4CAF50;
+font-weight: 600;
+}
+.total-amount {
+color: var(--primary-orange);
+font-weight: 700;
+}
+.modal-footer {
+padding: 1.5rem;
+border-top: 2px solid #333;
+display: flex;
+justify-content: flex-end;
+gap: 1rem;
+}
 @media (max-width: 768px) {
-  .movie-title {
-    font-size: 1.8rem;
-  }
-
-  .movie-meta {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .showtimes-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .time-display {
-    font-size: 1.5rem;
-  }
+.movie-title {
+font-size: 1.8rem;
+}
+.movie-meta {
+flex-direction: column;
+align-items: flex-start;
+}
+.showtimes-grid {
+grid-template-columns: 1fr;
+}
+.time-display {
+font-size: 1.5rem;
+}
+.modal-content {
+margin: 1rem;
+}
 }
 </style>
