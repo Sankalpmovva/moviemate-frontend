@@ -9,17 +9,34 @@ const error = ref('');
 const loading = ref(false);
 
 const router = useRouter();
-const { login } = useAuth();
+const { login, googleLogin } = useAuth();
 
+// Email/password login
 const submit = async () => {
   error.value = '';
   loading.value = true;
-  
   try {
     await login(email.value, password.value);
-    router.push('/');  // Redirect to home page after successful login
+    router.push('/'); // Redirect to home after successful login
   } catch (err) {
     error.value = err.response?.data?.error || 'Login failed';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Google OAuth login
+const handleGoogleLogin = async () => {
+  error.value = '';
+  loading.value = true;
+  try {
+    // Trigger Google OAuth flow (via popup)
+    const res = await googleLogin();
+    console.log('Google OAuth response:', res);
+    router.push('/'); // Redirect to home
+  } catch (err) {
+    console.error(err);
+    error.value = 'Google login failed';
   } finally {
     loading.value = false;
   }
@@ -29,9 +46,10 @@ const submit = async () => {
 <template>
   <div class="container mt-5" style="max-width: 420px;">
     <h2 class="text-center mb-4">Login</h2>
-    <div v-if="error" class="alert alert-danger">
-      {{ error }}
-    </div>
+
+    <div v-if="error" class="alert alert-danger">{{ error }}</div>
+
+    <!-- Email/password login form -->
     <form @submit.prevent="submit">
       <div class="mb-3">
         <label class="form-label">Email</label>
@@ -41,10 +59,16 @@ const submit = async () => {
         <label class="form-label">Password</label>
         <input v-model="password" type="password" class="form-control" required />
       </div>
-      <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+      <button type="submit" class="btn btn-primary w-100 mb-3" :disabled="loading">
         {{ loading ? 'Logging in...' : 'Login' }}
       </button>
     </form>
+
+    <!-- Google OAuth login button -->
+    <button class="btn btn-danger w-100" @click="handleGoogleLogin" :disabled="loading">
+      Login with Google
+    </button>
+
     <p class="text-center mt-3">
       No account? <router-link to="/register">Register here</router-link>
     </p>
