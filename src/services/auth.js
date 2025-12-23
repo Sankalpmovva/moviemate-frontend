@@ -78,3 +78,28 @@ export const useAuth = () => {
     loadUser
   };
 };
+
+// Update first + last name
+export const updateAccount = async (accountId, firstName, lastName) => {
+  try {
+    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, {
+      firstName,
+      lastName
+    });
+    return res.data;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
+
+// Add balance (dummy)
+export const addBalance = async (accountId, amount) => {
+  try {
+    const res = await axios.put(`${API_BASE}/accounts/${accountId}/add-balance`, { amount });
+    return res.data;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
