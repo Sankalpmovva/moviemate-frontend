@@ -67,7 +67,7 @@ const handleLogout = () => {
             <!-- Logged in ADMIN -->
             <template v-else>
               <li class="nav-item">
-                <router-link class="nav-link" to="/admin">
+                <router-link class="nav-link" to="/admin/dashboard">
                   Dashboard
                 </router-link>
               </li>

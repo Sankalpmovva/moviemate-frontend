@@ -29,7 +29,12 @@ const routes = [
   { path: '/register', component: Register },
   {
     path: '/admin',
-    component: () => import('../pages/admin/AdminHome.vue'),
+    component: () => import('../pages/admin/Dashboard.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/dashboard',
+    component: () => import('../pages/admin/Dashboard.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {

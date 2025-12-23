@@ -191,8 +191,8 @@ onMounted(async () => {
       <!-- Header -->
       <div class="admin-header">
         <h2>Booking Management</h2>
-        <router-link to="/" class="btn btn-outline-light">
-          Back to Home
+        <router-link to="/admin/dashboard" class="btn btn-outline-light">
+          Back to Dashboard
         </router-link>
       </div>
 

@@ -4,8 +4,8 @@
       <!-- Header -->
       <div class="admin-header">
         <h2>User Management</h2>
-        <router-link to="/admin" class="btn btn-outline-light btn-sm">
-          Back to Admin
+        <router-link to="/admin/dashboard" class="btn btn-outline-light btn-sm">
+          Back to Dashboard
         </router-link>
       </div>
 
