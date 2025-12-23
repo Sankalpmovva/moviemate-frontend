@@ -45,37 +45,6 @@ const totalPages = computed(() => {
 
 <template>
   <div>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-      <div class="container">
-        <router-link class="navbar-brand" to="/" style="font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #ff6b00, #ff9500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🎬 MovieMate</router-link>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-        >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <router-link class="nav-link" to="/">Home</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/account">Account</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/bookings">Bookings</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link btn btn-outline-light ms-2" to="/login">Login</router-link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-
     <!-- Hero Section -->
     <header class="text-white text-center py-5 mb-5" style="background: linear-gradient(135deg, #ff6b00 0%, #ff9500 50%, #1a1a1a 100%); position: relative; overflow: hidden;">
       <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.1; background-image: url('data:image/svg+xml,%3Csvg width=%2720%27 height=%2720%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cpath d=%27M0 0h20v20H0z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%271%27/%3E%3C/svg%3E');"></div>

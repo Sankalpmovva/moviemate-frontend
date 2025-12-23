@@ -1,15 +1,17 @@
 import axios from 'axios';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const API_BASE = 'http://localhost:2112';
 
-// 🔹 Reactive auth state
+// --------------------
+// Reactive auth state (singleton)
+// --------------------
 const user = ref(null);
 
 // --------------------
-// Load user from storage on app start
+// Init auth from localStorage
 // --------------------
-export const loadUser = () => {
+const loadUser = () => {
   const storedUser = localStorage.getItem('user');
   const token = localStorage.getItem('token');
 
@@ -20,33 +22,26 @@ export const loadUser = () => {
   }
 };
 
-// --------------------
-// Login
-// --------------------
-export const login = async (email, password) => {
-  const res = await axios.post(`${API_BASE}/accounts/login`, {
-    email,
-    password
-  });
+loadUser();
 
-  // Backend should return: token + accountId (+ email optionally)
-  if (res.data.token) {
+// --------------------
+// Auth actions
+// --------------------
+export const login = (loginData) => {
+  if (loginData.token) {
     const userData = {
-      accountId: res.data.accountId,
-      email
+      accountId: loginData.accountId,
+      email: loginData.email
     };
 
-    localStorage.setItem('token', res.data.token);
+    localStorage.setItem('token', loginData.token);
     localStorage.setItem('user', JSON.stringify(userData));
     user.value = userData;
   }
 
-  return res.data;
+  return loginData;
 };
 
-// --------------------
-// Register
-// --------------------
 export const register = async (firstName, lastName, email, password) => {
   return axios.post(`${API_BASE}/accounts/register`, {
     firstName,
@@ -56,20 +51,30 @@ export const register = async (firstName, lastName, email, password) => {
   });
 };
 
-// --------------------
-// Logout
-// --------------------
 export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   user.value = null;
 };
 
-// --------------------
-// Helpers
-// --------------------
-export const getUser = () => user.value;
-
 export const isLoggedIn = () => {
-  return !!localStorage.getItem('token');
+  return !!user.value;
+};
+
+export const getUser = () => {
+  return user.value;
+};
+
+// --------------------
+// Composable (for App.vue / Navbar)
+// --------------------
+export const useAuth = () => {
+  return {
+    user,
+    isLoggedIn: computed(() => !!user.value),
+    login,
+    register,
+    logout,
+    loadUser
+  };
 };
