@@ -2,6 +2,10 @@ import axios from 'axios';
 
 const API_BASE = 'http://localhost:2112'; // backend URL
 
+const api = axios.create({
+  baseURL: API_BASE
+});
+
 // Fetch all movies
 export const getMovies = async () => {
   try {
@@ -69,3 +73,13 @@ export const getAllBookings = async () => {
     return [];
   }
 };
+
+//attach jwt
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
