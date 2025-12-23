@@ -149,3 +149,16 @@ export const getUserBookings = async (userId) => {
     throw err;
   }
 };
+
+// --------------------
+// Cancel booking
+// --------------------
+export const cancelBooking = async (bookingId) => {
+  try {
+    const res = await axios.delete(`${API_BASE}/bookings/${bookingId}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error cancelling booking:', err);
+    throw err;
+  }
+};
