@@ -33,8 +33,10 @@ export const login = async (email, password) => {
 
     if (res.data.token) {
       const userData = {
-        accountId: res.data.accountId,
-        email
+        accountId: res.data.user.id,
+        email: res.data.user.email,
+        firstName: res.data.user.firstName,
+        lastName: res.data.user.lastName
       };
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(userData));
