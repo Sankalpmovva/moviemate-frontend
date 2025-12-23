@@ -30,12 +30,9 @@ const handleGoogleLogin = async () => {
   error.value = '';
   loading.value = true;
   try {
-    // Trigger Google OAuth flow (via popup)
-    const res = await googleLogin();
-    console.log('Google OAuth response:', res);
-    router.push('/'); // Redirect to home
+    await googleLogin();
+    router.push('/'); // redirect after login
   } catch (err) {
-    console.error(err);
     error.value = 'Google login failed';
   } finally {
     loading.value = false;
