@@ -32,6 +32,12 @@ const routes = [
   path: '/admin',
   component: () => import('../pages/admin/AdminHome.vue')
 },
+{
+  path: '/admin/movies',
+  component: () => import('../pages/admin/Movies.vue'),
+  meta: { requiresAdmin: true }
+}
+
 
 ];
 
