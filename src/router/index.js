@@ -7,6 +7,7 @@ import Wallet from '../pages/Wallet.vue';
 import Login from '../pages/Login.vue';
 import Register from '../pages/Register.vue';
 
+
 const routes = [
   { path: '/', component: Home },
   { path: '/movie/:id', component: MovieDetail },
