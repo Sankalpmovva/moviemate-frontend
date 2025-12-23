@@ -17,24 +17,34 @@ const handleLogout = () => {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
         <router-link class="navbar-brand" to="/">MovieMate</router-link>
+
         <button
           class="navbar-toggler"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
         >
           <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <router-link class="nav-link" to="/">Home</router-link>
-            </li>
-            <!-- Shown only if logged in -->
-            <template v-if="isLoggedIn">
+
+            <!-- Not logged in -->
+            <template v-if="!isLoggedIn">
+              <li class="nav-item">
+                <router-link class="nav-link" to="/">Home</router-link>
+              </li>
+              <li class="nav-item">
+                <router-link class="nav-link" to="/login">Login</router-link>
+              </li>
+            </template>
+
+            <!-- Logged in USER -->
+            <template v-else-if="isLoggedIn && !user?.isAdmin">
+              <li class="nav-item">
+                <router-link class="nav-link" to="/">Home</router-link>
+              </li>
               <li class="nav-item">
                 <router-link class="nav-link" to="/account">Account</router-link>
               </li>
@@ -45,22 +55,49 @@ const handleLogout = () => {
                 <router-link class="nav-link" to="/wallet">Wallet</router-link>
               </li>
               <li class="nav-item">
-                <button class="btn btn-outline-light ms-2" @click="handleLogout">Logout</button>
+                <button
+                  class="btn btn-outline-light ms-2"
+                  @click="handleLogout"
+                >
+                  Logout
+                </button>
               </li>
             </template>
-            <!-- Shown only if not logged in -->
+
+            <!-- Logged in ADMIN -->
             <template v-else>
               <li class="nav-item">
-                <router-link class="nav-link" to="/login">Login</router-link>
+                <router-link class="nav-link" to="/admin">
+                  Dashboard
+                </router-link>
+              </li>
+              <li class="nav-item">
+                <router-link class="nav-link" to="/admin/movies">
+                  Movies
+                </router-link>
+              </li>
+              <li class="nav-item">
+                <router-link class="nav-link" to="/admin/showtimes">
+                  Showtimes
+                </router-link>
+              </li>
+              <li class="nav-item">
+                <button
+                  class="btn btn-outline-danger ms-2"
+                  @click="handleLogout"
+                >
+                  Logout
+                </button>
               </li>
             </template>
+
           </ul>
         </div>
       </div>
     </nav>
 
     <!-- Main content -->
-    <router-view></router-view>
+    <router-view />
   </div>
 </template>
 
