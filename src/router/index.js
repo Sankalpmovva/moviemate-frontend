@@ -37,6 +37,11 @@ const routes = [
   component: () => import('../pages/admin/Bookings.vue'),
 },
 {
+  path: '/admin/showtimes',
+  component: () => import('../pages/admin/Showtimes.vue'),
+  meta: { requiresAdmin: true }
+},
+{
   path: '/admin/movies',
   component: () => import('../pages/admin/Movies.vue'),
   meta: { requiresAdmin: true }
