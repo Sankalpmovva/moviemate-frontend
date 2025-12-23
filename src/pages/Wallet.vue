@@ -7,7 +7,8 @@ const { user } = useAuth();
 const router = useRouter();
 
 const balance = ref(0);
-const loading = ref(false);
+const loading = ref(true);
+const addingBalance = ref(false);
 const message = ref('');
 
 // Load wallet balance
@@ -23,12 +24,15 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Error fetching wallet balance:', err);
+    message.value = 'Failed to load wallet balance.';
+  } finally {
+    loading.value = false;
   }
 });
 
 // Add funds to wallet
 const addFunds = async () => {
-  loading.value = true;
+  addingBalance.value = true;
   message.value = '';
   
   try {
@@ -39,12 +43,14 @@ const addFunds = async () => {
       setTimeout(() => {
         message.value = '';
       }, 3000);
+    } else {
+      message.value = 'Failed to add balance. Please try again.';
     }
   } catch (err) {
     console.error(err);
     message.value = 'Failed to add balance. Please try again.';
   } finally {
-    loading.value = false;
+    addingBalance.value = false;
   }
 };
 </script>
@@ -58,15 +64,23 @@ const addFunds = async () => {
       {{ message }}
     </div>
     
-    <div class="card mb-4" style="max-width: 400px;">
-      <div class="card-body">
-        <h5 class="card-title">Current Balance</h5>
-        <h2 class="card-text text-success">€{{ balance.toFixed(2) }}</h2>
+    <div v-if="loading" class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
       </div>
     </div>
     
-    <button class="btn btn-success" @click="addFunds" :disabled="loading">
-      {{ loading ? 'Processing...' : 'Add €50' }}
-    </button>
+    <div v-else>
+      <div class="card mb-4" style="max-width: 400px;">
+        <div class="card-body">
+          <h5 class="card-title">Current Balance</h5>
+          <h2 class="card-text text-success">€{{ balance.toFixed(2) }}</h2>
+        </div>
+      </div>
+      
+      <button class="btn btn-success" @click="addFunds" :disabled="addingBalance">
+        {{ addingBalance ? 'Processing...' : 'Add €50' }}
+      </button>
+    </div>
   </div>
 </template>
