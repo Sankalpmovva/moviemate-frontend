@@ -1,85 +1,101 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:2112'; // backend URL
+const API_BASE = 'http://localhost:2112'; 
 
+// Create axios instance
 const api = axios.create({
-  baseURL: API_BASE
+  baseURL: API_BASE,
 });
 
-// Fetch all movies
+// --------------------
+// Attach JWT automatically
+// --------------------
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// --------------------
+// Movies
+// --------------------
 export const getMovies = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/movies`);
-    return response.data;
+    const res = await api.get('/movies');
+    return res.data;
   } catch (err) {
     console.error('Error fetching movies:', err);
     return [];
   }
 };
 
-// Fetch single movie by ID
 export const getMovieById = async (id) => {
   try {
-    const response = await axios.get(`${API_BASE}/movies/${id}`);
-    return response.data;
+    const res = await api.get(`/movies/${id}`);
+    return res.data;
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching movie:', err);
     return null;
   }
 };
 
-// Fetch showtimes for a movie
-export const getShowtimesByMovie = async (id) => {
+// --------------------
+// Showtimes
+// --------------------
+export const getShowtimesByMovie = async (movieId) => {
   try {
-    const response = await axios.get(`${API_BASE}/showtimes`, {
-      params: { movieId: id },
+    const res = await api.get('/showtimes', {
+      params: { movieId },
     });
-    return response.data;
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-};
-
-// Fetch all showtimes
-export const getAllShowtimes = async () => {
-  try {
-    const response = await axios.get(`${API_BASE}/showtimes`);
-    return response.data;
+    return res.data;
   } catch (err) {
     console.error('Error fetching showtimes:', err);
     return [];
   }
 };
 
-// Fetch all theatres
+export const getAllShowtimes = async () => {
+  try {
+    const res = await api.get('/showtimes');
+    return res.data;
+  } catch (err) {
+    console.error('Error fetching all showtimes:', err);
+    return [];
+  }
+};
+
+// --------------------
+// Theatres (may 404 until backend exists)
+// --------------------
 export const getTheatres = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/theatres`);
-    return response.data;
+    const res = await api.get('/theatres');
+    return res.data;
   } catch (err) {
     console.error('Error fetching theatres:', err);
     return [];
   }
 };
 
-// Fetch all bookings
+// --------------------
+// Bookings
+// --------------------
 export const getAllBookings = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/bookings`);
-    return response.data;
+    const res = await api.get('/bookings');
+    return res.data;
   } catch (err) {
     console.error('Error fetching bookings:', err);
     return [];
   }
 };
 
-//attach jwt
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
+// --------------------
+// Export api for custom calls
+// --------------------
+export default api;
