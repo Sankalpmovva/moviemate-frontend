@@ -27,28 +27,29 @@ loadUser();
 // --------------------
 // Auth actions
 // --------------------
-export const login = (loginData) => {
-  if (loginData.token) {
-    const userData = {
-      accountId: loginData.accountId,
-      email: loginData.email
-    };
+export const login = async (email, password) => {
+  try {
+    const res = await axios.post(`${API_BASE}/accounts/login`, { email, password });
 
-    localStorage.setItem('token', loginData.token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    user.value = userData;
+    if (res.data.token) {
+      const userData = {
+        accountId: res.data.accountId,
+        email
+      };
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      user.value = userData;
+    }
+
+    return res.data;
+  } catch (err) {
+    console.error('Login error:', err);
+    throw err;
   }
-
-  return loginData;
 };
 
 export const register = async (firstName, lastName, email, password) => {
-  return axios.post(`${API_BASE}/accounts/register`, {
-    firstName,
-    lastName,
-    email,
-    password
-  });
+  return axios.post(`${API_BASE}/accounts/register`, { firstName, lastName, email, password });
 };
 
 export const logout = () => {
@@ -62,7 +63,8 @@ export const isLoggedIn = () => {
 };
 
 export const getUser = () => {
-  return user.value;
+  const storedUser = localStorage.getItem('user');
+  return storedUser ? JSON.parse(storedUser) : null;
 };
 
 // --------------------
@@ -79,27 +81,41 @@ export const useAuth = () => {
   };
 };
 
-// Update first + last name
-export const updateAccount = async (accountId, firstName, lastName) => {
+// --------------------
+// Account management
+// --------------------
+export const getAccount = async (accountId) => {
+  if (!accountId) return null;
   try {
-    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, {
-      firstName,
-      lastName
-    });
+    const res = await axios.get(`${API_BASE}/accounts/${accountId}`);
     return res.data;
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching account:', err);
     return null;
   }
 };
 
-// Add balance (dummy)
+export const updateAccount = async (accountId, firstName, lastName) => {
+  if (!accountId) return null;
+  try {
+    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, { firstName, lastName });
+    return res.data;
+  } catch (err) {
+    console.error('Error updating account:', err);
+    return null;
+  }
+};
+
+// --------------------
+// Wallet / balance
+// --------------------
 export const addBalance = async (accountId, amount) => {
+  if (!accountId) return null;
   try {
     const res = await axios.put(`${API_BASE}/accounts/${accountId}/add-balance`, { amount });
     return res.data;
   } catch (err) {
-    console.error(err);
+    console.error('Error adding balance:', err);
     return null;
   }
 };
