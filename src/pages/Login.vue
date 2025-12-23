@@ -1,29 +1,35 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { login } from '../services/auth';
+import axios from 'axios';
+import { useAuth } from '../services/auth';
 
 const email = ref('');
 const password = ref('');
 const error = ref('');
-const loading = ref(false);
-
 const router = useRouter();
+const { login } = useAuth();
 
 const submit = async () => {
-  error.value = '';
-  loading.value = true;
-
   try {
-    await login(email.value, password.value);
+    const res = await axios.post('http://localhost:2112/accounts/login', {
+      email: email.value,
+      password: password.value
+    });
+
+    login({
+      token: res.data.token,
+      accountId: res.data.accountId,
+      email: email.value
+    });
+
     router.push('/');
   } catch (err) {
     error.value = err.response?.data?.error || 'Login failed';
-  } finally {
-    loading.value = false;
   }
 };
 </script>
+
 
 <template>
   <div class="container mt-5" style="max-width: 420px;">
