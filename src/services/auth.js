@@ -93,7 +93,7 @@ export const getAccount = async (accountId) => {
     return res.data;
   } catch (err) {
     console.error('Error fetching account:', err);
-    return null;
+    throw err;
   }
 };
 
@@ -104,7 +104,7 @@ export const updateAccount = async (accountId, firstName, lastName) => {
     return res.data;
   } catch (err) {
     console.error('Error updating account:', err);
-    return null;
+    throw err;
   }
 };
 
@@ -118,6 +118,34 @@ export const addBalance = async (accountId, amount) => {
     return res.data;
   } catch (err) {
     console.error('Error adding balance:', err);
-    return null;
+    throw err;
+  }
+};
+
+// --------------------
+// Booking management
+// --------------------
+export const createBooking = async (showId, userId, tickets, totalPrice) => {
+  try {
+    const res = await axios.post(`${API_BASE}/bookings/create`, {
+      Show_ID: showId,
+      User_ID: userId,
+      Tickets: tickets,
+      Total_Price: totalPrice
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Error creating booking:', err);
+    throw err;
+  }
+};
+
+export const getUserBookings = async (userId) => {
+  try {
+    const res = await axios.get(`${API_BASE}/bookings?userId=${userId}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error fetching bookings:', err);
+    throw err;
   }
 };

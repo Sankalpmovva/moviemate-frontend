@@ -267,7 +267,7 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div v-else class="no-showtimes">
-                  <p>🎬 No showtimes available.</p>
+                  <p>No showtimes available.</p>
                 </div>
               </div>
             </div>
