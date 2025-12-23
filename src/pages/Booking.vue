@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useAuth, getUserBookings } from '../services/auth.js';
+import { useAuth, getUserBookings, cancelBooking } from '../services/auth.js';
 import { useRouter } from 'vue-router';
 
 const { user, isLoggedIn } = useAuth();
@@ -9,6 +9,7 @@ const router = useRouter();
 const bookings = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const cancellingBooking = ref(null);
 
 onMounted(async () => {
   if (!isLoggedIn.value || !user.value) {
@@ -42,6 +43,27 @@ const formatTime = (timeStr) => {
   const match = timeStr.match(/T(\d{2}:\d{2})/);
   return match ? match[1] : timeStr.substring(0, 5);
 };
+
+const handleCancelBooking = async (bookingId) => {
+  if (!confirm('Are you sure you want to cancel this booking? The amount will be refunded to your wallet.')) {
+    return;
+  }
+  
+  cancellingBooking.value = bookingId;
+  
+  try {
+    const result = await cancelBooking(bookingId);
+    alert(`Booking cancelled! €${result.refundedAmount} has been refunded to your wallet.`);
+    
+    // Refresh bookings
+    const data = await getUserBookings(user.value.accountId);
+    bookings.value = data || [];
+  } catch (err) {
+    alert('Failed to cancel booking: ' + (err.response?.data?.error || err.message));
+  } finally {
+    cancellingBooking.value = null;
+  }
+};
 </script>
 
 <template>
@@ -65,10 +87,21 @@ const formatTime = (timeStr) => {
 
     <div v-else class="bookings-list">
       <div v-for="booking in bookings" :key="booking.Booking_ID" class="booking-card">
-        <div class="booking-header">
-          <h5>{{ booking.showtimes?.movies?.Title || 'Unknown Movie' }}</h5>
-          <span class="badge bg-success">Confirmed</span>
-        </div>
+          <div class="booking-header">
+            <h5>{{ booking.showtimes?.movies?.Title || 'Unknown Movie' }}</h5>
+            <div class="d-flex gap-2 align-items-center">
+              <span v-if="booking.IsActive" class="badge bg-success">Confirmed</span>
+              <span v-else class="badge bg-secondary">Cancelled</span>
+              <button 
+                v-if="booking.IsActive" 
+                class="btn btn-sm btn-danger" 
+                @click="handleCancelBooking(booking.Booking_ID)"
+                :disabled="cancellingBooking === booking.Booking_ID"
+              >
+                {{ cancellingBooking === booking.Booking_ID ? 'Cancelling...' : 'Cancel' }}
+              </button>
+            </div>
+          </div>
         <div class="booking-details">
           <div class="detail-item">
             <strong>Date:</strong> {{ formatDate(booking.showtimes?.Show_Date) }}

@@ -16,8 +16,7 @@ const loading = ref(true);
 const error = ref(null);
 const selectedTheatre = ref('all');
 const selectedDate = ref('all');
-const currentPage = ref(1);
-const itemsPerPage = 5;
+const showAllShowtimes = ref(false);
 
 // Booking modal state
 const showBookingModal = ref(false);
@@ -77,14 +76,36 @@ const groupedShowtimes = computed(() => {
   return Object.values(grouped).sort((a, b) => new Date(a.date) - new Date(b.date));
 });
 
-// Paginate the grouped dates
-const paginatedGroups = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  return groupedShowtimes.value.slice(start, start + itemsPerPage);
+// Show limited or all showtimes
+const displayedShowtimes = computed(() => {
+  if (showAllShowtimes.value) {
+    return groupedShowtimes.value;
+  }
+  
+  // Flatten all shows and take first 5
+  const allShows = [];
+  for (const group of groupedShowtimes.value) {
+    allShows.push(...group.shows);
+    if (allShows.length >= 5) break;
+  }
+  
+  // Re-group the limited shows by date
+  const limited = allShows.slice(0, 5);
+  const regrouped = {};
+  limited.forEach(show => {
+    const date = show.Show_Date?.split('T')[0] || 'Unknown';
+    if (!regrouped[date]) {
+      regrouped[date] = { date, shows: [] };
+    }
+    regrouped[date].shows.push(show);
+  });
+  
+  return Object.values(regrouped).sort((a, b) => new Date(a.date) - new Date(b.date));
 });
 
-const totalPages = computed(() => {
-  return Math.ceil(groupedShowtimes.value.length / itemsPerPage);
+const hasMoreShowtimes = computed(() => {
+  const totalShows = groupedShowtimes.value.reduce((sum, group) => sum + group.shows.length, 0);
+  return totalShows > 5;
 });
 
 const totalPrice = computed(() => {
@@ -288,7 +309,7 @@ onMounted(async () => {
                 
                 <div v-if="showtimes.length" class="showtimes-wrapper">
                   <!-- Showtimes Grid by Date -->
-                  <div v-for="dateGroup in paginatedGroups" :key="dateGroup.date" class="date-group">
+                  <div v-for="dateGroup in displayedShowtimes" :key="dateGroup.date" class="date-group">
                     <h6 class="date-header">{{ formatDate(dateGroup.date) }}</h6>
                     <div class="showtimes-grid">
                       <div v-for="show in dateGroup.shows" :key="show.Show_ID" class="showtime-card">
@@ -317,27 +338,17 @@ onMounted(async () => {
                     </div>
                   </div>
 
-                  <!-- Pagination -->
-                  <div v-if="totalPages > 1" class="pagination-section mt-4">
-                    <nav aria-label="Page navigation">
-                      <ul class="pagination justify-content-center">
-                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                          <button class="page-link" @click="currentPage = 1" :disabled="currentPage === 1">First</button>
-                        </li>
-                        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                          <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">Previous</button>
-                        </li>
-                        <li v-for="page in totalPages" :key="page" class="page-item" :class="{ active: currentPage === page }">
-                          <button class="page-link" @click="currentPage = page">{{ page }}</button>
-                        </li>
-                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                          <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">Next</button>
-                        </li>
-                        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                          <button class="page-link" @click="currentPage = totalPages" :disabled="currentPage === totalPages">Last</button>
-                        </li>
-                      </ul>
-                    </nav>
+                
+                  <!-- Load More Button -->
+                  <div v-if="hasMoreShowtimes && !showAllShowtimes" class="text-center mt-4">
+                    <button class="btn btn-outline-warning" @click="showAllShowtimes = true">
+                      Load More Showtimes
+                    </button>
+                  </div>
+                  <div v-else-if="showAllShowtimes" class="text-center mt-4">
+                    <button class="btn btn-outline-secondary" @click="showAllShowtimes = false">
+                      Show Less
+                    </button>
                   </div>
                 </div>
                 <div v-else class="no-showtimes">
