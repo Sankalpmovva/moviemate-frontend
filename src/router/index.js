@@ -7,7 +7,6 @@ import Wallet from '../pages/Wallet.vue';
 import Login from '../pages/Login.vue';
 import Register from '../pages/Register.vue';
 
-
 const routes = [
   { path: '/', component: Home },
   { path: '/movie/:id', component: MovieDetail },
@@ -29,25 +28,25 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   {
-  path: '/admin',
-  component: () => import('../pages/admin/AdminHome.vue')
-},
-{
-  path: '/admin/bookings',
-  component: () => import('../pages/admin/Bookings.vue'),
-},
-{
-  path: '/admin/showtimes',
-  component: () => import('../pages/admin/Showtimes.vue'),
-  meta: { requiresAdmin: true }
-},
-{
-  path: '/admin/movies',
-  component: () => import('../pages/admin/Movies.vue'),
-  meta: { requiresAdmin: true }
-}
-
-
+    path: '/admin',
+    component: () => import('../pages/admin/AdminHome.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/bookings',
+    component: () => import('../pages/admin/Bookings.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/showtimes',
+    component: () => import('../pages/admin/Showtimes.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/movies',
+    component: () => import('../pages/admin/Movies.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  }
 ];
 
 const router = createRouter({
@@ -57,14 +56,43 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
-  
-  if (to.meta.requiresAuth && (!token || !user)) {
-    next('/login');
-  } else {
+  // Always allow non-protected routes
+  if (!to.meta.requiresAuth) {
     next();
+    return;
   }
+  
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+  
+  // If no token/user, redirect to login
+  if (!token || !userStr) {
+    next('/login');
+    return;
+  }
+  
+  // Parse user
+  let user = null;
+  try {
+    user = JSON.parse(userStr);
+  } catch (e) {
+    console.error('Error parsing user:', e);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    next('/login');
+    return;
+  }
+  
+  // Check admin requirement - check both isAdmin and IsAdmin for compatibility
+  if (to.meta.requiresAdmin && !user.isAdmin && !user.IsAdmin) {
+    console.log('Access denied: User is not an admin', user);
+    alert('Access denied: Admin privileges required');
+    next('/');
+    return;
+  }
+  
+  // All good, proceed
+  next();
 });
 
 export default router;

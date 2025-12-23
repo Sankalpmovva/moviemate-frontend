@@ -186,6 +186,7 @@
 </template>
 
 <script setup>
+const API_BASE = 'http://localhost:2112/admin';
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../../services/auth.js';
@@ -195,7 +196,7 @@ const router = useRouter();
 const { user, isLoggedIn } = useAuth();
 
 // Check if user is admin
-if (!isLoggedIn.value || !user.value?.IsAdmin) {
+if (!isLoggedIn.value || !user.value?.isAdmin) {
   router.push('/login');
 }
 
@@ -223,7 +224,10 @@ const newShowtime = ref({
 // Load dropdown data
 const loadDropdowns = async () => {
   try {
-    const response = await axios.get('/api/admin/showtimes/dropdowns');
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE}/showtimes/dropdowns`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     movies.value = response.data.movies;
     theatres.value = response.data.theatres;
     formats.value = response.data.formats;
@@ -240,7 +244,7 @@ const loadShowtimes = async () => {
   error.value = '';
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.get('/api/admin/showtimes', {
+    const response = await axios.get(`${API_BASE}/showtimes`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     showtimes.value = response.data;
@@ -254,6 +258,7 @@ const loadShowtimes = async () => {
 
 // Format date
 const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -265,12 +270,13 @@ const formatDate = (dateString) => {
 // Format time
 const formatTime = (timeString) => {
   if (!timeString) return '';
-  const time = new Date(`1970-01-01T${timeString}`);
-  return time.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
+  // Handle ISO timestamp format
+  const match = timeString.match(/T(\d{2}:\d{2})/);
+  if (match) {
+    return match[1];
+  }
+  // Handle HH:MM:SS format
+  return timeString.substring(0, 5);
 };
 
 // Add new showtime
@@ -281,7 +287,7 @@ const addShowtime = async () => {
   
   try {
     const token = localStorage.getItem('token');
-    await axios.post('/api/admin/showtimes', newShowtime.value, {
+    await axios.post(`${API_BASE}/showtimes`, newShowtime.value, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -325,7 +331,7 @@ const deleteShowtime = async (showtimeId) => {
   
   try {
     const token = localStorage.getItem('token');
-    await axios.delete(`/api/admin/showtimes/${showtimeId}`, {
+    await axios.delete(`${API_BASE}/showtimes/${showtimeId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -344,7 +350,6 @@ const deleteShowtime = async (showtimeId) => {
   }
 };
 
-// Initialize
 onMounted(async () => {
   await loadDropdowns();
   await loadShowtimes();
