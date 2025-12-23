@@ -28,6 +28,11 @@ const routes = [
   },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  {
+  path: '/admin',
+  component: () => import('../pages/admin/AdminHome.vue')
+},
+
 ];
 
 const router = createRouter({

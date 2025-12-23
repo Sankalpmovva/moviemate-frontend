@@ -28,27 +28,25 @@ loadUser();
 // Auth actions
 // --------------------
 export const login = async (email, password) => {
-  try {
-    const res = await axios.post(`${API_BASE}/accounts/login`, { email, password });
+  const res = await axios.post(`${API_BASE}/accounts/login`, { email, password });
 
-    if (res.data.token) {
-      const userData = {
-        accountId: res.data.user.id,
-        email: res.data.user.email,
-        firstName: res.data.user.firstName,
-        lastName: res.data.user.lastName
-      };
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      user.value = userData;
-    }
+  if (res.data.token) {
+    const userData = {
+      accountId: res.data.user.id,
+      email: res.data.user.email,
+      firstName: res.data.user.firstName,
+      lastName: res.data.user.lastName,
+      isAdmin: res.data.user.isAdmin   
+    };
 
-    return res.data;
-  } catch (err) {
-    console.error('Login error:', err);
-    throw err;
+    localStorage.setItem('token', res.data.token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    user.value = userData;
   }
+
+  return res.data.user; // return user for redirect logic
 };
+
 
 export const register = async (firstName, lastName, email, password) => {
   return axios.post(`${API_BASE}/accounts/register`, { firstName, lastName, email, password });

@@ -11,13 +11,23 @@ const loading = ref(false);
 const router = useRouter();
 const { login, googleLogin } = useAuth();
 
+// Centralized redirect logic
+const redirectAfterLogin = (user) => {
+  if (user?.isAdmin) {
+    router.push('/admin');
+  } else {
+    router.push('/');
+  }
+};
+
 // Email/password login
 const submit = async () => {
   error.value = '';
   loading.value = true;
+
   try {
-    await login(email.value, password.value);
-    router.push('/'); // Redirect to home after successful login
+    const user = await login(email.value, password.value);
+    redirectAfterLogin(user);
   } catch (err) {
     error.value = err.response?.data?.error || 'Login failed';
   } finally {
@@ -29,9 +39,10 @@ const submit = async () => {
 const handleGoogleLogin = async () => {
   error.value = '';
   loading.value = true;
+
   try {
-    await googleLogin();
-    router.push('/'); // redirect after login
+    const user = await googleLogin(); // MUST return user
+    redirectAfterLogin(user);
   } catch (err) {
     error.value = 'Google login failed';
   } finally {
@@ -44,30 +55,43 @@ const handleGoogleLogin = async () => {
   <div class="container mt-5" style="max-width: 420px;">
     <h2 class="text-center mb-4">Login</h2>
 
-    <div v-if="error" class="alert alert-danger">{{ error }}</div>
+    <div v-if="error" class="alert alert-danger">
+      {{ error }}
+    </div>
 
-    <!-- Email/password login form -->
+    <!-- Email/password login -->
     <form @submit.prevent="submit">
       <div class="mb-3">
         <label class="form-label">Email</label>
         <input v-model="email" type="email" class="form-control" required />
       </div>
+
       <div class="mb-3">
         <label class="form-label">Password</label>
         <input v-model="password" type="password" class="form-control" required />
       </div>
-      <button type="submit" class="btn btn-primary w-100 mb-3" :disabled="loading">
+
+      <button
+        type="submit"
+        class="btn btn-primary w-100 mb-3"
+        :disabled="loading"
+      >
         {{ loading ? 'Logging in...' : 'Login' }}
       </button>
     </form>
 
-    <!-- Google OAuth login button -->
-    <button class="btn btn-danger w-100" @click="handleGoogleLogin" :disabled="loading">
+    <!-- Google OAuth login -->
+    <button
+      class="btn btn-danger w-100"
+      @click="handleGoogleLogin"
+      :disabled="loading"
+    >
       Login with Google
     </button>
 
     <p class="text-center mt-3">
-      No account? <router-link to="/register">Register here</router-link>
+      No account?
+      <router-link to="/register">Register here</router-link>
     </p>
   </div>
 </template>
