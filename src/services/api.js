@@ -48,15 +48,8 @@ export const getMovieById = async (id) => {
 // Showtimes
 // --------------------
 export const getShowtimesByMovie = async (movieId) => {
-  try {
-    const res = await api.get('/showtimes', {
-      params: { movieId },
-    });
-    return res.data;
-  } catch (err) {
-    console.error('Error fetching showtimes:', err);
-    return [];
-  }
+  const res = await axios.get(`http://localhost:2112/showtimes?movieId=${movieId}`);
+  return res.data;
 };
 
 export const getAllShowtimes = async () => {
