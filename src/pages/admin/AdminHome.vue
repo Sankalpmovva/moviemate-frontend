@@ -6,19 +6,29 @@
         <h2>Admin Dashboard</h2>
         <div class="header-actions">
           <span class="text-muted">Last updated: {{ lastUpdated }}</span>
+          <button class="btn btn-sm btn-outline-light ms-2" @click="refreshDashboard" :disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+            Refresh
+          </button>
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p class="mt-2 text-muted">Loading dashboard data...</p>
+      </div>
+
       <!-- Statistics Cards -->
-      <div class="row g-4 mb-4">
+      <div v-else class="row g-4 mb-4">
         <div class="col-md-3">
           <div class="stat-card revenue">
             <div class="stat-icon">€</div>
             <div class="stat-content">
-              <h3 class="text-success">€{{ formatNumber(stats.totalRevenue) }}</h3>
+              <h3 class="text-success">{{ formatCurrency(stats.totalRevenue) }}</h3>
               <p>Total Revenue</p>
-              <small class="text-muted" v-if="stats.revenueChange > 0">
-                +{{ stats.revenueChange }}% this month
+              <small :class="stats.revenueChange > 0 ? 'text-success' : 'text-danger'">
+                {{ stats.revenueChange > 0 ? '+' : '' }}{{ stats.revenueChange }}% this month
               </small>
             </div>
           </div>
@@ -26,7 +36,7 @@
         
         <div class="col-md-3">
           <div class="stat-card users">
-            <div class="stat-icon">👤</div>
+            <div class="stat-icon">U</div>
             <div class="stat-content">
               <h3>{{ formatNumber(stats.totalUsers) }}</h3>
               <p>Active Users</p>
@@ -39,7 +49,7 @@
         
         <div class="col-md-3">
           <div class="stat-card bookings">
-            <div class="stat-icon">T</div>
+            <div class="stat-icon">B</div>
             <div class="stat-content">
               <h3>{{ formatNumber(stats.totalBookings) }}</h3>
               <p>Total Bookings</p>
@@ -69,28 +79,29 @@
         <div class="col-md-8">
           <div class="dashboard-card">
             <div class="card-header">
-              <h5>Revenue Trend (Last 30 Days)</h5>
+              <h5>Revenue Trend (Last 7 Days)</h5>
             </div>
             <div class="card-body">
-              <!-- Simple revenue visualization -->
-              <div v-if="revenueData.length > 0" class="revenue-chart">
+              <div v-if="stats.revenueData7Days && stats.revenueData7Days.length > 0" class="revenue-chart">
                 <div class="chart-bars">
-                  <div v-for="(item, index) in revenueData" :key="index" class="chart-bar-container">
+                  <div v-for="(item, index) in stats.revenueData7Days" :key="index" class="chart-bar-container">
                     <div class="d-flex flex-column align-items-center">
-                      <div class="chart-bar" :style="{ height: getBarHeight(item.amount) + 'px' }"></div>
-                      <small class="text-muted mt-1">{{ item.day }}</small>
+                      <div class="chart-bar" :style="{ height: getBarHeight(item.amount) + 'px' }">
+                        <div class="chart-value">{{ formatCurrency(item.amount) }}</div>
+                      </div>
+                      <small class="text-muted mt-2">{{ item.day }}</small>
                     </div>
                   </div>
                 </div>
-                <div class="chart-legend">
+                <div class="chart-legend mt-3">
                   <div class="legend-item">
-                    <span class="legend-color" style="background-color: #ff6b00;"></span>
-                    <span class="text-muted">Daily Revenue</span>
+                    <span class="legend-color"></span>
+                    <span class="text-muted">Daily Revenue (EUR)</span>
                   </div>
                 </div>
               </div>
               <div v-else class="text-center text-muted py-4">
-                <p>Revenue data will be displayed here</p>
+                <p>No revenue data available</p>
               </div>
             </div>
           </div>
@@ -128,7 +139,7 @@
           <div class="dashboard-card">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h5>Recent Activity</h5>
-              <button class="btn btn-sm btn-outline-light" @click="loadRecentActivity">
+              <button class="btn btn-sm btn-outline-light" @click="loadRecentActivity" :disabled="loading">
                 Refresh
               </button>
             </div>
@@ -178,11 +189,6 @@
                   <span class="action-icon">B</span>
                   <span>View Bookings</span>
                 </router-link>
-                
-                <button class="quick-action-btn" @click="refreshDashboard">
-                  <span class="action-icon">R</span>
-                  <span>Refresh Dashboard</span>
-                </button>
               </div>
             </div>
           </div>
