@@ -14,13 +14,14 @@ const message = ref('');
 // Load wallet balance
 onMounted(async () => {
   if (!user.value || !user.value.accountId) {
+    loading.value = false;
     return;
   }
   
   try {
     const accountData = await getAccount(user.value.accountId);
-    if (accountData) {
-      balance.value = accountData.Account_Balance || 0;
+    if (accountData && accountData.Account_Balance !== undefined) {
+      balance.value = parseFloat(accountData.Account_Balance) || 0;
     }
   } catch (err) {
     console.error('Error fetching wallet balance:', err);
@@ -38,7 +39,7 @@ const addFunds = async () => {
   try {
     const res = await addBalance(user.value.accountId, 50);
     if (res && res.newBalance !== undefined) {
-      balance.value = res.newBalance;
+      balance.value = parseFloat(res.newBalance);
       message.value = 'Successfully added €50 to your wallet!';
       setTimeout(() => {
         message.value = '';
