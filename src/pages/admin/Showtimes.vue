@@ -3,7 +3,7 @@
     <div class="container mt-4">
       <!-- Header -->
       <div class="admin-header">
-        <h2>🎬 Showtime Management</h2>
+        <h2>Showtime Management</h2>
         <router-link to="/admin" class="btn btn-outline-light btn-sm">
           ← Back to Admin
         </router-link>
@@ -120,21 +120,74 @@
         <!-- Right: Showtimes List -->
         <div class="col-md-8">
           <div class="card bg-dark text-light">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <h5>📅 All Showtimes</h5>
-              <button class="btn btn-sm btn-outline-light" @click="loadShowtimes" :disabled="loading">
-                🔄 Refresh
-              </button>
-            </div>
-            <div class="card-body">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5>All Showtimes ({{ filteredShowtimes.length }})</h5>
+      <button class="btn btn-sm btn-outline-light" @click="loadShowtimes" :disabled="loading">
+        Refresh
+      </button>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="card-body border-bottom" style="background: #0a0a0a;">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label small text-muted">Search</label>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="form-control form-control-sm"
+            placeholder="Movie or theatre..."
+          />
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small text-muted">Movie</label>
+          <select v-model="movieFilter" class="form-select form-select-sm">
+            <option value="all">All Movies</option>
+            <option v-for="movie in movies" :key="movie.Movie_ID" :value="movie.Movie_ID">
+              {{ movie.Title }}
+            </option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small text-muted">Theatre</label>
+          <select v-model="theatreFilter" class="form-select form-select-sm">
+            <option value="all">All Theatres</option>
+            <option v-for="theatre in theatres" :key="theatre.Theatre_ID" :value="theatre.Theatre_ID">
+              {{ theatre.Name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small text-muted">From Date</label>
+          <input v-model="dateFrom" type="date" class="form-control form-control-sm" />
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small text-muted">To Date</label>
+          <input v-model="dateTo" type="date" class="form-control form-control-sm" />
+        </div>
+
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-sm btn-secondary w-100" @click="resetFilters">
+        Reset
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card-body">
               <!-- Loading -->
               <div v-if="loading" class="text-center py-4">
                 <div class="spinner-border text-warning"></div>
               </div>
 
               <!-- No Showtimes -->
-              <div v-else-if="showtimes.length === 0" class="text-center py-4 text-muted">
-                No showtimes found. Add one!
+              <div v-else-if="filteredShowtimes.length === 0" class="text-center py-4 text-muted">
+                <p>No showtimes match your filters.</p>
+                <button class="btn btn-sm btn-outline-light" @click="resetFilters">Clear Filters</button>
               </div>
 
               <!-- Showtimes Table -->
@@ -151,7 +204,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="showtime in showtimes" :key="showtime.Show_ID">
+                    <tr v-for="showtime in filteredShowtimes" :key="showtime.Show_ID">
                       <td>
                         <strong>{{ showtime.movies?.Title }}</strong>
                       </td>
@@ -170,7 +223,7 @@
                           @click="deleteShowtime(showtime.Show_ID)"
                           :disabled="loading"
                         >
-                          🗑️ Delete
+                          Delete
                         </button>
                       </td>
                     </tr>
@@ -187,7 +240,7 @@
 
 <script setup>
 const API_BASE = 'http://localhost:2112/admin';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../../services/auth.js';
 import axios from 'axios';
@@ -354,6 +407,71 @@ onMounted(async () => {
   await loadDropdowns();
   await loadShowtimes();
 });
+
+// Filter state
+const searchQuery = ref('');
+const movieFilter = ref('all');
+const theatreFilter = ref('all');
+const dateFrom = ref('');
+const dateTo = ref('');
+
+// Filtered showtimes
+const filteredShowtimes = computed(() => {
+  let result = [...showtimes.value];
+  
+  // Search filter (movie title or theatre name)
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(showtime => 
+      showtime.movies?.Title?.toLowerCase().includes(query) ||
+      showtime.theaters?.Name?.toLowerCase().includes(query) ||
+      showtime.theaters?.City?.toLowerCase().includes(query)
+    );
+  }
+  
+  // Movie filter
+  if (movieFilter.value !== 'all') {
+    result = result.filter(showtime => 
+      showtime.Movie_ID === parseInt(movieFilter.value)
+    );
+  }
+  
+  // Theatre filter
+  if (theatreFilter.value !== 'all') {
+    result = result.filter(showtime => 
+      showtime.Theater_ID === parseInt(theatreFilter.value)
+    );
+  }
+  
+  // Date range filter
+  if (dateFrom.value) {
+    const fromDate = new Date(dateFrom.value);
+    result = result.filter(showtime => {
+      const showtimeDate = new Date(showtime.Show_Date);
+      return showtimeDate >= fromDate;
+    });
+  }
+  
+  if (dateTo.value) {
+    const toDate = new Date(dateTo.value);
+    toDate.setHours(23, 59, 59, 999); // End of day
+    result = result.filter(showtime => {
+      const showtimeDate = new Date(showtime.Show_Date);
+      return showtimeDate <= toDate;
+    });
+  }
+  
+  return result;
+});
+
+// Reset filters function
+const resetFilters = () => {
+  searchQuery.value = '';
+  movieFilter.value = 'all';
+  theatreFilter.value = 'all';
+  dateFrom.value = '';
+  dateTo.value = '';
+};
 </script>
 
 <style scoped>

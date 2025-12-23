@@ -212,7 +212,7 @@ onMounted(async () => {
       <!-- Header -->
       <div class="admin-header">
         <h2>
-          <span class="header-icon">🎬</span>
+          
           Movie Management
         </h2>
         <router-link to="/" class="btn btn-outline-light">

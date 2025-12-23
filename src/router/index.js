@@ -46,7 +46,14 @@ const routes = [
     path: '/admin/movies',
     component: () => import('../pages/admin/Movies.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
-  }
+  },
+    {
+    path: '/admin/accounts',
+    component: () => import('../pages/admin/Accounts.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  
+  
 ];
 
 const router = createRouter({

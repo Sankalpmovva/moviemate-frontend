@@ -72,6 +72,11 @@ const handleLogout = () => {
                 </router-link>
               </li>
               <li class="nav-item">
+                <router-link class="nav-link" to="/admin/accounts">
+                  Accounts
+                </router-link>
+              </li>
+              <li class="nav-item">
                 <router-link class="nav-link" to="/admin/movies">
                   Movies
                 </router-link>
