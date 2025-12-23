@@ -651,4 +651,28 @@ onMounted(async () => {
     width: 12px;
   }
 }
+.chart-value {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  margin-bottom: 5px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.chart-bar-container:hover .chart-value {
+  opacity: 1;
+}
+
+.chart-bar {
+  position: relative;
+  cursor: pointer;
+}
 </style>
