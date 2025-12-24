@@ -1,4 +1,5 @@
 <script setup>
+import axios from 'axios'; 
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../../services/auth.js';
@@ -9,6 +10,8 @@ import {
   updateAdminMovie,
   deleteAdminMovie
 } from '../../services/admin.js';
+const importingFromTmdb = ref(false);
+const tmdbMessage = ref('');
 
 const router = useRouter();
 const { user, isLoggedIn } = useAuth();
@@ -37,6 +40,40 @@ const form = ref({
   Runtime: '',
   Release_Date: ''
 });
+
+
+const importFromTmdb = async () => {
+  if (!confirm('Import new movies from TMDB? This will add currently popular movies to your database.')) {
+    return;
+  }
+  
+  importingFromTmdb.value = true;
+  tmdbMessage.value = '';
+  
+  try {
+    const token = localStorage.getItem('token');
+    const res = await axios.post('http://localhost:2112/admin/tmdb/import', {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    tmdbMessage.value = 'Successfully imported movies from TMDB!';
+    success.value = 'Movies imported! Refreshing list...';
+    
+    // Refresh the movies list
+    await fetchMovies();
+    
+    setTimeout(() => {
+      tmdbMessage.value = '';
+      success.value = '';
+    }, 5000);
+  } catch (err) {
+    console.error(err);
+    tmdbMessage.value = 'Failed to import movies from TMDB';
+    error.value = err.response?.data?.error || 'Import failed';
+  } finally {
+    importingFromTmdb.value = false;
+  }
+};
 
 // Fetch movies from API
 const fetchMovies = async () => {
@@ -229,6 +266,10 @@ onMounted(async () => {
         <strong>Success:</strong> {{ success }}
         <button type="button" class="btn-close" @click="success = ''"></button>
       </div>
+      <div v-if="tmdbMessage" class="alert alert-info alert-dismissible fade show">
+        <strong>Info:</strong> {{ tmdbMessage }}
+        <button type="button" class="btn-close" @click="tmdbMessage = ''"></button>
+      </div>
 
       <!-- Loading State -->
       <div v-if="loading && movies.length === 0" class="text-center py-5">
@@ -245,9 +286,24 @@ onMounted(async () => {
           <div class="selection-panel">
             <div class="panel-header">
               <h5>Select Movie</h5>
-              <button class="btn btn-success btn-sm" @click="handleAddNew">
-                <span>➕</span> Add New Movie
-              </button>
+              <div class="d-flex gap-2">
+                <button 
+                  class="btn btn-info btn-sm" 
+                  @click="importFromTmdb"
+                  :disabled="importingFromTmdb"
+                  title="Import popular movies from TMDB API"
+                >
+                  <span v-if="importingFromTmdb" class="spinner-border spinner-border-sm me-1"></span>
+                  {{ importingFromTmdb ? 'Importing...' : 'Import from TMDB' }}
+                </button>
+                <button 
+                  class="btn btn-success btn-sm" 
+                  @click="handleAddNew"
+                  title="Add a custom movie manually"
+                >
+                  Add Custom Movie
+                </button>
+              </div>
             </div>
 
             <!-- Search Bar -->
