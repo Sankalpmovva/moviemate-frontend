@@ -6,6 +6,8 @@ import Bookings from '../pages/Booking.vue';
 import Wallet from '../pages/Wallet.vue';
 import Login from '../pages/Login.vue';
 import Register from '../pages/Register.vue';
+import ForgotPassword from '../pages/ForgotPassword.vue';
+import ResetPassword from '../pages/ResetPassword.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -57,7 +59,8 @@ const routes = [
     component: () => import('../pages/admin/Accounts.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
-  
+  { path: '/forgot-password', component: ForgotPassword },
+  { path: '/reset-password', name: 'reset-password', component: ResetPassword },
   
 ];
 

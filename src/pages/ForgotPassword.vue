@@ -16,7 +16,7 @@ const requestReset = async () => {
   loading.value = true;
 
   try {
-    await axios.post('http://localhost:2112/password-reset/request', {
+    await axios.post('http://localhost:2112/passwordreset/request', {
       email: email.value
     });
 

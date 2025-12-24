@@ -46,6 +46,9 @@
       Login with Google
     </button>
 
+      <p class="text-center mt-3">
+        <router-link to="/forgot-password">Forgot Password?</router-link>
+     </p>
     <p class="text-center mt-3">
       No account?
       <router-link to="/register">Register here</router-link>
