@@ -41,9 +41,9 @@ const form = ref({
   Release_Date: ''
 });
 
-
+// Import movies from TMDB and generate showtimes
 const importFromTmdb = async () => {
-  if (!confirm('Import new movies from TMDB? This will add currently popular movies to your database.')) {
+  if (!confirm('Import new movies from TMDB and generate showtimes? This will add currently popular movies and create showtimes for the next 7 days.')) {
     return;
   }
   
@@ -52,12 +52,22 @@ const importFromTmdb = async () => {
   
   try {
     const token = localStorage.getItem('token');
-    const res = await axios.post('http://localhost:2112/admin/tmdb/import', {}, {
+    
+    // Step 1: Import movies from TMDB
+    tmdbMessage.value = 'Importing movies from TMDB...';
+    const importRes = await axios.post('http://localhost:2112/admin/tmdb/import', {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    tmdbMessage.value = 'Successfully imported movies from TMDB!';
-    success.value = 'Movies imported! Refreshing list...';
+    // Step 2: Generate showtimes for all movies
+    tmdbMessage.value = 'Generating showtimes...';
+    const showtimesRes = await axios.post('http://localhost:2112/customshowtimes', {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    // Success!
+    tmdbMessage.value = `Successfully imported movies and generated ${showtimesRes.data.count} showtimes!`;
+    success.value = 'Movies and showtimes imported! Refreshing list...';
     
     // Refresh the movies list
     await fetchMovies();
@@ -68,13 +78,12 @@ const importFromTmdb = async () => {
     }, 5000);
   } catch (err) {
     console.error(err);
-    tmdbMessage.value = 'Failed to import movies from TMDB';
+    tmdbMessage.value = 'Failed to import movies or generate showtimes';
     error.value = err.response?.data?.error || 'Import failed';
   } finally {
     importingFromTmdb.value = false;
   }
 };
-
 // Fetch movies from API
 const fetchMovies = async () => {
   loading.value = true;
