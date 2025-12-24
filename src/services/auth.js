@@ -77,7 +77,8 @@ export const useAuth = () => {
     login,
     register,
     logout,
-    loadUser
+    loadUser,
+    googleLogin
   };
 };
 
@@ -182,7 +183,7 @@ export const googleLogin = () => {
             console.log('Google response received:', response);
             
             // Send the credential to your backend
-            const res = await axios.post('/accounts/oauth/google', {
+            const res = await axios.post(`${API_BASE}/routes/accounts/oauth/google`, {
               credential: response.credential  // Send the entire JWT credential
             });
 
