@@ -167,47 +167,59 @@ export const cancelBooking = async (bookingId) => {
 // --------------------
 export const googleLogin = () => {
   return new Promise((resolve, reject) => {
-    /* global google */
-    if (!google || !google.accounts) {
-      return reject(new Error('Google API not loaded'));
+    // Check if Google API is loaded
+    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+      reject(new Error('Google API not loaded. Please refresh the page.'));
+      return;
     }
 
-    google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: async (response) => {
-        try {
-          // JWT from Google
-          const jwtToken = response.credential;
-          const base64Url = jwtToken.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const userObj = JSON.parse(window.atob(base64));
+    try {
+      // Initialize Google Sign-In
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          try {
+            console.log('Google response received:', response);
+            
+            // Send the credential to your backend
+            const res = await axios.post('/accounts/oauth/google', {
+              credential: response.credential  // Send the entire JWT credential
+            });
 
-          // Send to backend
-          const res = await axios.post(`${API_BASE}/accounts/oauth/google`, {
-            googleUserId: userObj.sub,
-            email: userObj.email,
-            firstName: userObj.given_name,
-            lastName: userObj.family_name
-          });
-
-          // Save JWT & user info
-          localStorage.setItem('token', res.data.token);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
-          user.value = res.data.user;
-
-          resolve(res.data);
-        } catch (err) {
-          console.error('Google login error:', err);
-          reject(err);
+            console.log('Backend response:', res.data);
+            
+            // Save JWT & user info
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('user', JSON.stringify(res.data.user));
+            
+            // Update reactive user state
+            user.value = res.data.user;
+            
+            resolve(res.data.user);
+          } catch (err) {
+            console.error('Error in Google callback:', err);
+            reject(err);
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+      
+      // Trigger Google Sign-In popup
+      window.google.accounts.id.prompt((notification) => {
+        console.log('Google prompt notification:', notification);
+        
+        if (notification.isNotDisplayed()) {
+          reject(new Error('Google Sign-In popup was blocked. Please allow popups for this site.'));
+        } else if (notification.isSkippedMoment()) {
+          reject(new Error('Google Sign-In was skipped.'));
         }
-      }
-    });
-
-    // Render the Google Sign-In button invisibly to trigger popup
-    google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        reject(new Error('Google login popup was blocked or skipped'));
-      }
-    });
+        
+      });
+      
+    } catch (err) {
+      console.error('Error initializing Google Sign-In:', err);
+      reject(err);
+    }
   });
 };
