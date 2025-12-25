@@ -237,6 +237,8 @@ import axios from 'axios';
 
 const router = useRouter();
 const { user, isLoggedIn } = useAuth();
+const showActionsModal = ref(false);
+const selectedShowtimeForAction = ref(null);
 
 // Check if user is admin
 if (!isLoggedIn.value || !user.value?.isAdmin) {
@@ -453,6 +455,75 @@ const resetFilters = () => {
   theatreFilter.value = 'all';
   dateFrom.value = '';
   dateTo.value = '';
+};
+
+//admin feat: open/close booking and update capacity
+
+const openActionsModal = (showtime) => {
+  selectedShowtimeForAction.value = showtime;
+  showActionsModal.value = true;
+};
+
+const closeActionsModal = () => {
+  showActionsModal.value = false;
+  selectedShowtimeForAction.value = null;
+};
+
+const toggleBookingStatus = async () => {
+  if (!selectedShowtimeForAction.value) return;
+  
+  const newStatus = !selectedShowtimeForAction.value.Booking_Enabled;
+  const action = newStatus ? 'open' : 'close';
+  
+  if (!confirm(`Are you sure you want to ${action} booking for this showtime?`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    await axios.put(
+      `${API_BASE}/showtimes/${selectedShowtimeForAction.value.Show_ID}/capacity`,
+      { Booking_Enabled: newStatus },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    success.value = `Booking ${action}ed successfully!`;
+    closeActionsModal();
+    await loadShowtimes();
+    
+    setTimeout(() => {
+      success.value = '';
+    }, 3000);
+  } catch (err) {
+    error.value = `Failed to ${action} booking`;
+  }
+};
+
+const updateCapacity = async (newCapacity) => {
+  if (!selectedShowtimeForAction.value) return;
+  
+  if (!confirm(`Change capacity to ${newCapacity} seats?`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    await axios.put(
+      `${API_BASE}/showtimes/${selectedShowtimeForAction.value.Show_ID}/capacity`,
+      { Total_Capacity: newCapacity },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    success.value = 'Capacity updated successfully!';
+    closeActionsModal();
+    await loadShowtimes();
+    
+    setTimeout(() => {
+      success.value = '';
+    }, 3000);
+  } catch (err) {
+    error.value = 'Failed to update capacity';
+  }
 };
 </script>
 
