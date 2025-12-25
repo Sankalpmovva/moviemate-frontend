@@ -1,37 +1,89 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { getMovies } from '../services/api';
+import axios from 'axios';
 
 const movies = ref([]);
-const selectedGenre = ref('all');
+const genres = ref([]);
+const loading = ref(true);
+const error = ref(null);
 const currentPage = ref(1);
 const moviesPerPage = 8;
 
-const genres = ref([]);
-const locations = ref([
-  { id: 'all', name: 'All Locations' },
-  { id: 'london', name: 'London' },
-  { id: 'manchester', name: 'Manchester' },
-  { id: 'birmingham', name: 'Birmingham' },
-  { id: 'leeds', name: 'Leeds' }
-]);
+const searchQuery = ref('');
+const selectedGenre = ref('all');
+const sortBy = ref('newest');
 
-onMounted(async () => {
-  movies.value = await getMovies();
-  // Extract unique genres
-  const uniqueGenres = [...new Set(movies.value.map(m => m.genres?.Name).filter(Boolean))];
-  genres.value = [
-    { id: 'all', name: 'All Genres' },
-    ...uniqueGenres.map(g => ({ id: g, name: g }))
-  ];
-});
+
+const loadMovies = async () => {
+  try {
+    loading.value = true;
+    const res = await axios.get('http://localhost:2112/movies');
+    movies.value = res.data;
+    error.value = null;
+  } catch (err) {
+    console.error('Error loading movies:', err);
+    error.value = 'Failed to load movies. Please try again later.';
+    movies.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loadGenres = async () => {
+  try {
+    const res = await axios.get('http://localhost:2112/movies/genres/all');
+    genres.value = res.data;
+  } catch (err) {
+    console.error('Error loading genres:', err);
+    genres.value = [];
+  }
+};
 
 const filteredMovies = computed(() => {
-  return movies.value.filter(movie => {
-    const genreMatch = selectedGenre.value === 'all' || movie.genres?.Name === selectedGenre.value;
-    return genreMatch;
-  });
+  let result = [...movies.value];
+
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(movie => {
+      const title = movie.Title?.toLowerCase() || '';
+      return title.includes(query);
+    });
+  }
+
+  // Genre filter
+  if (selectedGenre.value !== 'all') {
+    result = result.filter(movie => {
+      const genreId = movie.genres?.Genre_ID || movie.Genre_ID;
+      return genreId === parseInt(selectedGenre.value);
+    });
+  }
+
+  // Sorting
+  switch(sortBy.value) {
+    case 'newest':
+      result.sort((a, b) => new Date(b.Release_Date || 0) - new Date(a.Release_Date || 0));
+      break;
+    case 'oldest':
+      result.sort((a, b) => new Date(a.Release_Date || 0) - new Date(b.Release_Date || 0));
+      break;
+    case 'rating':
+      result.sort((a, b) => (parseFloat(b.Rating) || 0) - (parseFloat(a.Rating) || 0));
+      break;
+    case 'title':
+      result.sort((a, b) => (a.Title || '').localeCompare(b.Title || ''));
+      break;
+  }
+
+  return result;
 });
+
+const resetFilters = () => {
+  searchQuery.value = '';
+  selectedGenre.value = 'all';
+  sortBy.value = 'newest';
+  currentPage.value = 1;
+};
 
 const paginatedMovies = computed(() => {
   const start = (currentPage.value - 1) * moviesPerPage;
@@ -40,6 +92,13 @@ const paginatedMovies = computed(() => {
 
 const totalPages = computed(() => {
   return Math.ceil(filteredMovies.value.length / moviesPerPage);
+});
+
+onMounted(async () => {
+  await Promise.all([
+    loadMovies(),
+    loadGenres()
+  ]);
 });
 </script>
 
@@ -56,22 +115,105 @@ const totalPages = computed(() => {
 
     <!-- Movies Grid -->
     <div class="container mb-5">
-      <!-- Filter Section -->
-      <div class="filter-section mb-5">
-        <div class="row g-3">
-          <div class="col-md-12">
-            <label class="filter-label">🎬 Filter by Genre</label>
-            <select v-model="selectedGenre" class="form-select filter-select">
-              <option v-for="genre in genres" :key="genre.id" :value="genre.id">
-                {{ genre.name }}
-              </option>
-            </select>
+<!-- Filters: -->
+     
+      <div class="filters-section mb-5">
+        <!-- Compact Filter Bar -->
+        <div class="compact-filters mb-4">
+          <div class="row align-items-center g-3">
+            <!-- Search Bar -->
+            <div class="col-xl-4 col-lg-5">
+              <div class="search-wrapper">
+                <div class="input-group">
+                  <span class="input-group-text bg-dark border-dark">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    class="form-control bg-dark text-white border-dark"
+                    placeholder="Search movies..."
+                    @input="currentPage = 1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Filters Row -->
+            <div class="col-xl-8 col-lg-7">
+              <div class="row g-2">
+                <!-- Genre Filter -->
+                <div class="col-md-6 col-6">
+                  <select v-model="selectedGenre" class="form-select bg-dark text-white border-dark" @change="currentPage = 1">
+                    <option value="all">All Genres</option>
+                    <option v-for="genre in genres" :key="genre.Genre_ID" :value="genre.Genre_ID">
+                      {{ genre.Name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Sort Filter -->
+                <div class="col-md-4 col-6">
+                  <select v-model="sortBy" class="form-select bg-dark text-white border-dark" @change="currentPage = 1">
+                    <option value="newest">Newest Releases</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="title">Title A-Z</option>
+                  </select>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="col-md-2 col-12">
+                  <button class="btn btn-outline-light w-100" @click="resetFilters">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results Count -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between">
+                <small class="text-muted">
+                  Showing {{ filteredMovies.length }} of {{ movies.length }} movies
+                </small>
+                <small class="text-muted" v-if="totalPages > 1">
+                  Page {{ currentPage }} of {{ totalPages }}
+                </small>
+              </div>
+            </div>
           </div>
         </div>
-        <p class="filter-results mt-3">
-          Showing <strong>{{ paginatedMovies.length }}</strong> of <strong>{{ filteredMovies.length }}</strong> movies
-        </p>
+
+        <!-- Loading State -->
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2 text-muted">Loading movies...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="alert alert-danger text-center">
+          {{ error }}
+          <button class="btn btn-sm btn-outline-light ms-2" @click="loadMovies">
+            Retry
+          </button>
+        </div>
+
+        <!-- No Results -->
+        <div v-else-if="filteredMovies.length === 0" class="no-results text-center py-5">
+          <div class="no-results-icon mb-3">🎬</div>
+          <h4 class="text-white mb-2">No movies found</h4>
+          <p class="text-muted mb-3">Try adjusting your search or filters</p>
+          <button class="btn btn-warning" @click="resetFilters">
+            Clear All Filters
+          </button>
+        </div>
       </div>
+
 
       <!-- Movies Grid -->
       <div class="row g-4">
@@ -215,5 +357,185 @@ const totalPages = computed(() => {
 .info-value {
   color: #00d4ff;
   font-weight: 700;
+}
+
+.filters-panel {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border: 2px solid #ff6b00;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(255, 107, 0, 0.2);
+}
+
+.filters-title {
+  color: #ff6b00;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.search-box {
+  position: relative;
+}
+
+.search-box input {
+  padding-left: 2.5rem;
+  background: #0a0a0a;
+  border: 2px solid #444;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.search-box input:focus {
+  background: #0a0a0a;
+  border-color: #ff6b00;
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.25);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+
+.filter-label {
+  color: #999;
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-select {
+  background: #0a0a0a;
+  border: 2px solid #444;
+  color: #fff;
+}
+
+.form-select:focus {
+  background: #0a0a0a;
+  border-color: #ff6b00;
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.25);
+}
+
+.form-select option {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.results-count {
+  color: #999;
+  font-size: 0.9rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.no-results {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: #1a1a1a;
+  border-radius: 12px;
+  border: 2px solid #333;
+}
+
+.no-results-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.no-results h3 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.no-results p {
+  color: #999;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .filters-panel {
+    padding: 1rem;
+  }
+
+  .filters-title {
+    font-size: 1.2rem;
+  }
+}
+/* Add these to your existing <style scoped> section */
+
+.compact-filters {
+  background: rgba(26, 26, 26, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.search-wrapper .input-group-text {
+  border-right: none;
+  color: #ff6b00;
+}
+
+.search-wrapper input {
+  border-left: none;
+  padding: 0.75rem;
+}
+
+.search-wrapper input:focus {
+  border-color: #ff6b00;
+  box-shadow: 0 0 0 0.25rem rgba(255, 107, 0, 0.25);
+}
+
+.form-select {
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s;
+}
+
+.form-select:focus {
+  border-color: #ff6b00;
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.25);
+}
+
+.secondary-filters {
+  padding-top: 0.75rem;
+  border-top: 1px solid #333;
+}
+
+/* Movie Grid Styles */
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .compact-filters {
+    padding: 1rem;
+  }
+  
+  .movies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .compact-filters .row > div {
+    margin-bottom: 0.5rem;
+  }
+  
+  .movies-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>
