@@ -209,11 +209,10 @@
                       <td class="text-success">€{{ showtime.Price }}</td>
                       <td>
                         <button 
-                          class="btn btn-sm btn-danger" 
-                          @click="deleteShowtime(showtime.Show_ID)"
-                          :disabled="loading"
+                          class="btn btn-sm btn-info" 
+                          @click="openActionsModal(showtime)"
                         >
-                          Delete
+                          Actions
                         </button>
                       </td>
                     </tr>
@@ -226,6 +225,89 @@
       </div>
     </div>
   </div>
+
+  <!-- Actions Modal -->
+<div v-if="showActionsModal && selectedShowtimeForAction" class="modal-overlay" @click="closeActionsModal">
+  <div class="modal-content-custom" @click.stop>
+    <div class="modal-header-custom">
+      <h5>Manage Showtime</h5>
+      <button class="btn-close-custom" @click="closeActionsModal">&times;</button>
+    </div>
+    
+    <div class="modal-body-custom">
+      <!-- Showtime Info -->
+      <div class="showtime-info-box">
+        <h6>{{ selectedShowtimeForAction.movies?.Title }}</h6>
+        <p class="text-muted mb-0">
+          {{ formatDate(selectedShowtimeForAction.Show_Date) }} at {{ formatTime(selectedShowtimeForAction.Start_Time) }}
+        </p>
+        <p class="text-muted mb-0">{{ selectedShowtimeForAction.theaters?.Name }}</p>
+      </div>
+
+      <!-- Current Status -->
+      <div class="status-box">
+        <div class="status-row">
+          <span>Booking Status:</span>
+          <span :class="selectedShowtimeForAction.Booking_Enabled ? 'badge bg-success' : 'badge bg-secondary'">
+            {{ selectedShowtimeForAction.Booking_Enabled ? 'Open' : 'Closed' }}
+          </span>
+        </div>
+        <div class="status-row">
+          <span>Capacity:</span>
+          <span class="fw-bold">{{ selectedShowtimeForAction.Total_Capacity || 5 }} seats</span>
+        </div>
+        <div class="status-row">
+          <span>Booked:</span>
+          <span class="fw-bold">{{ selectedShowtimeForAction.Booked_Seats || 0 }} seats</span>
+        </div>
+        <div class="status-row">
+          <span>Available:</span>
+          <span class="fw-bold text-success">
+            {{ (selectedShowtimeForAction.Total_Capacity || 5) - (selectedShowtimeForAction.Booked_Seats || 0) }} seats
+          </span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-section">
+        <h6 class="mb-3">Actions</h6>
+        
+        <!-- Toggle Booking -->
+        <button 
+          class="action-btn"
+          :class="selectedShowtimeForAction.Booking_Enabled ? 'btn-danger' : 'btn-success'"
+          @click="toggleBookingStatus"
+        >
+          {{ selectedShowtimeForAction.Booking_Enabled ? 'Close Booking' : 'Open Booking' }}
+        </button>
+
+        <!-- Change Capacity -->
+        <div class="capacity-actions">
+          <label class="action-label">Change Capacity:</label>
+          <div class="capacity-buttons">
+            <button class="btn btn-sm btn-outline-light" @click="updateCapacity(5)">5</button>
+            <button class="btn btn-sm btn-outline-light" @click="updateCapacity(10)">10</button>
+            <button class="btn btn-sm btn-outline-light" @click="updateCapacity(20)">20</button>
+            <button class="btn btn-sm btn-outline-light" @click="updateCapacity(50)">50</button>
+            <button class="btn btn-sm btn-outline-light" @click="updateCapacity(100)">100</button>
+          </div>
+        </div>
+
+        <!-- Delete -->
+        <button 
+          class="action-btn btn-danger-outline mt-3"
+          @click="deleteShowtime(selectedShowtimeForAction.Show_ID); closeActionsModal()"
+        >
+          Delete Showtime
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button class="btn btn-secondary" @click="closeActionsModal">Close</button>
+    </div>
+  </div>
+</div>
 </template>
 
 <script setup>
@@ -564,5 +646,174 @@ const updateCapacity = async (newCapacity) => {
 .btn-primary:hover {
   background-color: #ff9500;
   border-color: #ff9500;
+}
+
+/* Actions Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content-custom {
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header-custom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #333;
+}
+
+.modal-header-custom h5 {
+  margin: 0;
+  color: #ff6b00;
+}
+
+.btn-close-custom {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+}
+
+.modal-body-custom {
+  padding: 1.5rem;
+}
+
+.showtime-info-box {
+  background: #0a0a0a;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #333;
+}
+
+.showtime-info-box h6 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.status-box {
+  background: #0a0a0a;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #333;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #222;
+}
+
+.status-row:last-child {
+  border-bottom: none;
+}
+
+.actions-section h6 {
+  color: #ff6b00;
+  font-weight: 600;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #333;
+  border-radius: 8px;
+  background: #0a0a0a;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 0.5rem;
+}
+
+.action-btn.btn-danger {
+  border-color: #dc3545;
+  background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+  background: #bb2d3b;
+}
+
+.action-btn.btn-success {
+  border-color: #28a745;
+  background: #28a745;
+}
+
+.action-btn.btn-success:hover {
+  background: #218838;
+}
+
+.action-btn.btn-danger-outline {
+  border-color: #dc3545;
+  background: transparent;
+  color: #dc3545;
+}
+
+.action-btn.btn-danger-outline:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
+.capacity-actions {
+  margin-top: 1rem;
+}
+
+.action-label {
+  display: block;
+  color: #999;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.capacity-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.capacity-buttons .btn {
+  flex: 1;
+  min-width: 60px;
+  background: #0a0a0a;
+  border: 2px solid #333;
+  color: #fff;
+}
+
+.capacity-buttons .btn:hover {
+  border-color: #ff6b00;
+  background: #ff6b00;
+}
+
+.modal-footer-custom {
+  padding: 1.5rem;
+  border-top: 2px solid #333;
+  text-align: right;
 }
 </style>
