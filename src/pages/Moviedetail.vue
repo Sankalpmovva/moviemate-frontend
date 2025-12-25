@@ -16,6 +16,8 @@ const loading = ref(true);
 const error = ref(null);
 const selectedTheatre = ref('all');
 const selectedDate = ref('all');
+const selectedLanguage = ref('all');
+const selectedFormat = ref('all');
 const showAllShowtimes = ref(false);
 
 // Booking modal state
@@ -26,6 +28,38 @@ const userBalance = ref(0);
 const bookingLoading = ref(false);
 const bookingMessage = ref('');
 
+// Extract unique languages from showtimes
+const uniqueLanguages = computed(() => {
+  const languages = [...new Set(showtimes.value.map(s => {
+    
+    const spokenLang = s.languages_showtimes_Language_IDTolanguages;
+    if (spokenLang && typeof spokenLang === 'object') {
+      return spokenLang.Name || spokenLang.language_name || 'Unknown';
+    }
+    return 'Unknown';
+  }).filter(Boolean))];
+  
+  return [
+    { id: 'all', label: 'All Languages' },
+    ...languages.sort().map(lang => ({
+      id: lang,
+      label: lang
+    }))
+  ];
+});
+
+// Extract unique formats from showtimes
+const uniqueFormats = computed(() => {
+  const formats = [...new Set(showtimes.value.map(s => s.formats?.Name || 'Standard').filter(Boolean))];
+  return [
+    { id: 'all', label: 'All Formats' },
+    ...formats.sort().map(format => ({
+      id: format,
+      label: format
+    }))
+  ];
+});
+
 // Extract unique dates from showtimes
 const uniqueDates = computed(() => {
   const dates = [...new Set(showtimes.value.map(s => s.Show_Date?.split('T')[0]).filter(Boolean))];
@@ -33,7 +67,11 @@ const uniqueDates = computed(() => {
     { id: 'all', label: 'All Dates' },
     ...dates.sort().map(date => ({
       id: date,
-      label: new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+      label: new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     }))
   ];
 });
@@ -46,20 +84,40 @@ const uniqueTheatres = computed(() => {
       theatreMap[show.Theater_ID] = show.theaters;
     }
   });
-  return Object.values(theatreMap);
+  return [
+    { Theatre_ID: 'all', Name: 'All Theatres', City: '' },
+    ...Object.values(theatreMap)
+  ];
 });
 
 // Filtered showtimes based on selection
 const filteredShowtimes = computed(() => {
   return showtimes.value.filter(showtime => {
     const dateMatch = selectedDate.value === 'all' || showtime.Show_Date?.split('T')[0] === selectedDate.value;
-    let theatreMatch = true;
     
+    let theatreMatch = true;
     if (selectedTheatre.value !== 'all') {
       theatreMatch = showtime.Theater_ID === parseInt(selectedTheatre.value);
     }
     
-    return dateMatch && theatreMatch;
+    let languageMatch = true;
+    if (selectedLanguage.value !== 'all') {
+      const spokenLang = showtime.languages_showtimes_Language_IDTolanguages;
+      if (spokenLang && typeof spokenLang === 'object') {
+        const languageName = spokenLang.Name || spokenLang.language_name || 'Unknown';
+        languageMatch = languageName === selectedLanguage.value;
+      } else {
+        languageMatch = false;
+      }
+    }
+    
+    let formatMatch = true;
+    if (selectedFormat.value !== 'all') {
+      const showFormat = showtime.formats?.Name || 'Standard';
+      formatMatch = showFormat === selectedFormat.value;
+    }
+    
+    return dateMatch && theatreMatch && languageMatch && formatMatch;
   });
 });
 
@@ -78,35 +136,49 @@ const groupedShowtimes = computed(() => {
 
 // Show limited or all showtimes
 const displayedShowtimes = computed(() => {
-  if (showAllShowtimes.value) {
+  if (showAllShowtimes.value || groupedShowtimes.value.length === 0) {
     return groupedShowtimes.value;
   }
   
-  // Flatten all shows and take first 5
-  const allShows = [];
+  // Take first 3 dates or until we have 8 showtimes
+  const result = [];
+  let totalShows = 0;
+  
   for (const group of groupedShowtimes.value) {
-    allShows.push(...group.shows);
-    if (allShows.length >= 5) break;
+    const limitedShows = group.shows.slice(0, 8); // Max 8 shows per date
+    result.push({
+      date: group.date,
+      shows: limitedShows
+    });
+    totalShows += limitedShows.length;
+    
+    if (result.length >= 3 || totalShows >= 8) break;
   }
   
-  // Re-group the limited shows by date
-  const limited = allShows.slice(0, 5);
-  const regrouped = {};
-  limited.forEach(show => {
-    const date = show.Show_Date?.split('T')[0] || 'Unknown';
-    if (!regrouped[date]) {
-      regrouped[date] = { date, shows: [] };
-    }
-    regrouped[date].shows.push(show);
-  });
-  
-  return Object.values(regrouped).sort((a, b) => new Date(a.date) - new Date(b.date));
+  return result;
 });
 
 const hasMoreShowtimes = computed(() => {
   const totalShows = groupedShowtimes.value.reduce((sum, group) => sum + group.shows.length, 0);
-  return totalShows > 5;
+  const displayedShows = displayedShowtimes.value.reduce((sum, group) => sum + group.shows.length, 0);
+  return totalShows > displayedShows;
 });
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (selectedTheatre.value !== 'all') count++;
+  if (selectedDate.value !== 'all') count++;
+  if (selectedLanguage.value !== 'all') count++;
+  if (selectedFormat.value !== 'all') count++;
+  return count;
+});
+
+const resetFilters = () => {
+  selectedTheatre.value = 'all';
+  selectedDate.value = 'all';
+  selectedLanguage.value = 'all';
+  selectedFormat.value = 'all';
+};
 
 const totalPrice = computed(() => {
   if (!selectedShowtime.value) return 0;
@@ -120,7 +192,12 @@ const hasInsufficientBalance = computed(() => {
 const formatDate = (dateStr) => {
   if (!dateStr) return 'Unknown Date';
   const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return date.toLocaleDateString('en-GB', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
 };
 
 const getTheatreName = (theatreObj) => {
@@ -135,13 +212,22 @@ const getFormatName = (formatObj) => {
   return formatObj?.Name || 'Standard';
 };
 
+const getLanguageDisplay = (show) => {
+  const spokenLang = show.languages_showtimes_Language_IDTolanguages;
+  if (spokenLang && typeof spokenLang === 'object') {
+    return spokenLang.Name || spokenLang.language_name || 'Unknown';
+  }
+  return 'Unknown';
+};
+
 const getTimeOnly = (timeStr) => {
   if (!timeStr) return '00:00';
-  const match = timeStr.match(/T(\d{2}:\d{2})/);
-  if (match) {
-    return match[1];
-  }
-  return timeStr.split('.')[0].substring(0, 5);
+  const date = new Date(timeStr);
+  return date.toLocaleTimeString('en-GB', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
 };
 
 const openBookingModal = async (show) => {
@@ -154,7 +240,6 @@ const openBookingModal = async (show) => {
   ticketCount.value = 1;
   bookingMessage.value = '';
   
-  // Fetch current balance
   try {
     const accountData = await getAccount(user.value.accountId);
     if (accountData) {
@@ -205,6 +290,21 @@ const confirmBooking = async () => {
     bookingLoading.value = false;
   }
 };
+
+// Movie rating in stars
+const ratingStars = computed(() => {
+  if (!movie.value || !movie.value.Rating) return [];
+  const rating = parseFloat(movie.value.Rating);
+  const fullStars = Math.floor(rating / 2);
+  const halfStar = rating % 2 >= 1 ? 1 : 0;
+  const emptyStars = 5 - fullStars - halfStar;
+  
+  return {
+    full: fullStars,
+    half: halfStar,
+    empty: emptyStars
+  };
+});
 
 onMounted(async () => {
   try {
@@ -284,30 +384,49 @@ onMounted(async () => {
               <div class="showtimes-section mt-5">
                 <h5 class="section-title">Available Showtimes</h5>
                 
+                
                 <!-- Filters -->
                 <div class="filters-container">
-                  <div class="row g-2">
-                    <div class="col-md-6">
-                      <label class="filter-label">🎭 Theatre</label>
+                  <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                      <label class="filter-label">Theatre</label>
                       <select v-model="selectedTheatre" class="form-select filter-select">
                         <option value="all">All Theatres</option>
-                        <option v-for="theatre in uniqueTheatres" :key="theatre.Theatre_ID" :value="theatre.Theatre_ID">
-                          {{ theatre.Name }} - {{ theatre.City }}
+                        <option v-for="theatre in uniqueTheatres.filter(t => t.Theatre_ID !== 'all')" 
+                                :key="theatre.Theatre_ID" 
+                                :value="theatre.Theatre_ID">
+                          {{ theatre.Name }} ({{ theatre.City }})
                         </option>
                       </select>
                     </div>
-                    <div class="col-md-6">
-                      <label class="filter-label">📅 Date</label>
+                    <div class="col-md-6 col-lg-3">
+                      <label class="filter-label">Date</label>
                       <select v-model="selectedDate" class="form-select filter-select">
                         <option v-for="date in uniqueDates" :key="date.id" :value="date.id">
                           {{ date.label }}
                         </option>
                       </select>
                     </div>
+                    <div class="col-md-6 col-lg-3">
+                      <label class="filter-label">Language</label>
+                      <select v-model="selectedLanguage" class="form-select filter-select">
+                        <option v-for="lang in uniqueLanguages" :key="lang.id" :value="lang.id">
+                          {{ lang.label }}
+                        </option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                      <label class="filter-label">Format</label>
+                      <select v-model="selectedFormat" class="form-select filter-select">
+                        <option v-for="format in uniqueFormats" :key="format.id" :value="format.id">
+                          {{ format.label }}
+                        </option>
+                      </select>
+                    </div>
                   </div>
                 </div>
                 
-                <div v-if="showtimes.length" class="showtimes-wrapper">
+                <div v-if="filteredShowtimes.length" class="showtimes-wrapper">
                   <!-- Showtimes Grid by Date -->
                   <div v-for="dateGroup in displayedShowtimes" :key="dateGroup.date" class="date-group">
                     <h6 class="date-header">{{ formatDate(dateGroup.date) }}</h6>
@@ -315,7 +434,10 @@ onMounted(async () => {
                       <div v-for="show in dateGroup.shows" :key="show.Show_ID" class="showtime-card">
                         <div class="showtime-header">
                           <div class="time-display">{{ getTimeOnly(show.Start_Time) }}</div>
-                          <div class="format-badge">{{ getFormatName(show.formats) }}</div>
+                          <div class="badges">
+                            <span class="format-badge">{{ getFormatName(show.formats) }}</span>
+                            <span class="language-badge">{{ getLanguageDisplay(show) }}</span>
+                          </div>
                         </div>
                         <div class="showtime-details">
                           <div class="detail-row">
@@ -327,32 +449,44 @@ onMounted(async () => {
                             <span class="detail-value">{{ getTheatreCity(show.theaters) }}</span>
                           </div>
                           <div class="detail-row">
+                            <span class="detail-label">Seats:</span>
+                            <span class="detail-value">{{ show.Available_Seats || 'N/A' }} available</span>
+                          </div>
+                          <div class="detail-row">
                             <span class="detail-label">Price:</span>
                             <span class="price-tag">€{{ parseFloat(show.Price).toFixed(2) }}</span>
                           </div>
                         </div>
                         <button class="btn btn-warning btn-book" @click="openBookingModal(show)">
-                          BOOK SEAT
+                          BOOK TICKETS
                         </button>
                       </div>
                     </div>
                   </div>
 
-                
                   <!-- Load More Button -->
-                  <div v-if="hasMoreShowtimes && !showAllShowtimes" class="text-center mt-4">
+                  <div v-if="hasMoreShowtimes" class="text-center mt-4">
                     <button class="btn btn-outline-warning" @click="showAllShowtimes = true">
-                      Load More Showtimes
-                    </button>
-                  </div>
-                  <div v-else-if="showAllShowtimes" class="text-center mt-4">
-                    <button class="btn btn-outline-secondary" @click="showAllShowtimes = false">
-                      Show Less
+                      View All {{ filteredShowtimes.length }} Showtimes
                     </button>
                   </div>
                 </div>
                 <div v-else class="no-showtimes">
-                  <p>🎬 No showtimes available.</p>
+                  <div class="empty-state">
+                    <h6>No showtimes found</h6>
+                    <p>Try adjusting your filters or check back later for new showtimes.</p>
+                    <button class="btn btn-outline-secondary" @click="resetFilters">
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recommendations Section -->
+              <div class="recommendations-section" v-if="false"> 
+                <h5 class="section-title">You Might Also Like</h5>
+                <div class="recommendations-grid">
+                  <!-- Add recommendation cards here -->
                 </div>
               </div>
             </div>
@@ -432,6 +566,239 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+
+.quick-info-card {
+  background: var(--bg-darker);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  border: 1px solid #333;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #333;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.info-value {
+  color: #fff;
+  font-weight: 600;
+}
+
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star {
+  font-size: 1.2rem;
+}
+
+.star.full {
+  color: #FFD700;
+}
+
+.star.half {
+  color: #FFD700;
+  opacity: 0.7;
+}
+
+.star.empty {
+  color: #555;
+}
+
+.rating-number {
+  margin-left: 0.5rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.movie-header {
+  margin-bottom: 2rem;
+}
+
+.movie-tagline {
+  color: #ff6b00;
+  font-style: italic;
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+.movie-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 10px;
+  border: 1px solid #333;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-orange);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  color: #999;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.additional-info {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--bg-darker);
+  border-radius: 10px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.info-card {
+  padding: 1rem;
+  background: #242424;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-orange);
+}
+
+.info-card h6 {
+  color: #ff6b00;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.info-card p {
+  color: #ddd;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.age-rating {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: #333;
+  color: #fff;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filter-summary {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.btn-clear-filters {
+  background: transparent;
+  border: none;
+  color: #ff6b00;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-clear-filters:hover {
+  color: #ff9500;
+}
+
+.badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.language-badge {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: var(--bg-darker);
+  border-radius: 10px;
+  border: 2px dashed #444;
+}
+
+.empty-state h6 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #999;
+  margin-bottom: 1.5rem;
+}
+
+.recommendations-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #333;
+}
+
+@media (max-width: 768px) {
+  .movie-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .showtime-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .badges {
+    width: 100%;
+  }
+}
+
 .detail-container {
   background: var(--bg-dark);
   min-height: 100vh;
