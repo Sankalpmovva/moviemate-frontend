@@ -236,6 +236,18 @@ const openBookingModal = async (show) => {
     return;
   }
 
+  // Check if booking is allowed
+  if (!show.Booking_Enabled) {
+    alert('Booking is closed for this showtime');
+    return;
+  }
+
+  // Check if fully booked
+  if (isFullyBooked(show)) {
+    alert('This showtime is fully booked');
+    return;
+  }
+
   selectedShowtime.value = show;
   ticketCount.value = 1;
   bookingMessage.value = '';
@@ -281,8 +293,14 @@ const confirmBooking = async () => {
       router.push('/bookings');
     }, 2000);
   } catch (err) {
+  
     if (err.response?.data?.error === 'Insufficient balance') {
       bookingMessage.value = `Insufficient balance. You need €${totalPrice.value.toFixed(2)} but have €${userBalance.value.toFixed(2)}. Please add funds to your wallet.`;
+    } else if (err.response?.data?.error === 'Not enough seats available') {
+      const available = err.response?.data?.availableSeats || 0;
+      bookingMessage.value = `Only ${available} seats available. Please reduce your ticket count.`;
+    } else if (err.response?.data?.error === 'Booking is closed for this showtime') {
+      bookingMessage.value = 'Booking is closed for this showtime.';
     } else {
       bookingMessage.value = err.response?.data?.error || 'Booking failed. Please try again.';
     }
@@ -290,7 +308,6 @@ const confirmBooking = async () => {
     bookingLoading.value = false;
   }
 };
-
 // Movie rating in stars
 const ratingStars = computed(() => {
   if (!movie.value || !movie.value.Rating) return [];
@@ -322,6 +339,47 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+const getSeatsAvailable = (show) => {
+  const available = (show.Total_Capacity || 5) - (show.Booked_Seats || 0);
+  return `${available} available`;
+};
+
+const getSeatsClass = (show) => {
+  const available = (show.Total_Capacity || 5) - (show.Booked_Seats || 0);
+  if (available === 0) return 'text-danger fw-bold';
+  if (available <= 2) return 'text-warning fw-bold';
+  return 'text-success';
+};
+
+const isFullyBooked = (show) => {
+  const available = (show.Total_Capacity || 5) - (show.Booked_Seats || 0);
+  return available === 0;
+};
+
+const getBookButtonClass = (show) => {
+  if (isFullyBooked(show) || !show.Booking_Enabled) return 'btn-secondary';
+  return 'btn-warning';
+};
+
+const getBookButtonText = (show) => {
+  if (!show.Booking_Enabled) return 'BOOKING CLOSED';
+  if (isFullyBooked(show)) return 'FULLY BOOKED';
+  return 'BOOK SEAT';
+};
+
+const maxTicketsAvailable = computed(() => {
+  if (!selectedShowtime.value) return 10;
+  const available = (selectedShowtime.value.Total_Capacity || 5) - (selectedShowtime.value.Booked_Seats || 0);
+  return Math.min(10, available);
+});
+
+const getAvailableSeatsCount = (show) => {
+  return (show.Total_Capacity || 5) - (show.Booked_Seats || 0);
+};
+
+
+
 </script>
 
 <template>
@@ -439,26 +497,35 @@ onMounted(async () => {
                             <span class="language-badge">{{ getLanguageDisplay(show) }}</span>
                           </div>
                         </div>
-                        <div class="showtime-details">
-                          <div class="detail-row">
-                            <span class="detail-label">Theatre:</span>
-                            <span class="detail-value">{{ getTheatreName(show.theaters) }}</span>
-                          </div>
-                          <div class="detail-row">
-                            <span class="detail-label">Location:</span>
-                            <span class="detail-value">{{ getTheatreCity(show.theaters) }}</span>
-                          </div>
-                          <div class="detail-row">
-                            <span class="detail-label">Seats:</span>
-                            <span class="detail-value">{{ show.Available_Seats || 'N/A' }} available</span>
-                          </div>
-                          <div class="detail-row">
-                            <span class="detail-label">Price:</span>
-                            <span class="price-tag">€{{ parseFloat(show.Price).toFixed(2) }}</span>
-                          </div>
+                          <div class="showtime-details">
+                            <div class="detail-row">
+                              <span class="detail-label">Theatre:</span>
+                              <span class="detail-value">{{ getTheatreName(show.theaters) }}</span>
+                            </div>
+                            <div class="detail-row">
+                              <span class="detail-label">Location:</span>
+                              <span class="detail-value">{{ getTheatreCity(show.theaters) }}</span>
+                            </div>
+                          
+                            <div class="detail-row">
+                              <span class="detail-label">Seats:</span>
+                              <span :class="getSeatsClass(show)">
+                                {{ getSeatsAvailable(show) }}
+                              </span>
+                            </div>
+                            <div class="detail-row">
+                              <span class="detail-label">Price:</span>
+                              <span class="price-tag">€{{ parseFloat(show.Price).toFixed(2) }}</span>
+                            </div>
                         </div>
-                        <button class="btn btn-warning btn-book" @click="openBookingModal(show)">
-                          BOOK TICKETS
+
+                        <button 
+                          class="btn btn-book"
+                          :class="getBookButtonClass(show)"
+                          @click="openBookingModal(show)"
+                          :disabled="isFullyBooked(show) || !show.Booking_Enabled"
+                        >
+                          {{ getBookButtonText(show) }}
                         </button>
                       </div>
                     </div>
@@ -521,11 +588,30 @@ onMounted(async () => {
             
             <div class="ticket-selector mt-4">
               <label class="form-label"><strong>Number of Tickets:</strong></label>
-              <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary" @click="ticketCount = Math.max(1, ticketCount - 1)" :disabled="ticketCount <= 1">-</button>
-                <span class="ticket-count">{{ ticketCount }}</span>
-                <button class="btn btn-outline-secondary" @click="ticketCount = Math.min(10, ticketCount + 1)" :disabled="ticketCount >= 10">+</button>
+              
+              
+              <div v-if="selectedShowtime" class="alert alert-info mb-2">
+                <small>
+                  <strong>Available Seats:</strong> 
+                  {{ (selectedShowtime.Total_Capacity || 5) - (selectedShowtime.Booked_Seats || 0) }} 
+                  of {{ selectedShowtime.Total_Capacity || 5 }}
+                </small>
               </div>
+              
+              <div class="d-flex align-items-center gap-3">
+                <button 
+                  class="btn btn-outline-secondary" 
+                  @click="ticketCount = Math.max(1, ticketCount - 1)" 
+                  :disabled="ticketCount <= 1"
+                >-</button>
+                <span class="ticket-count">{{ ticketCount }}</span>
+                <button 
+                  class="btn btn-outline-secondary" 
+                  @click="ticketCount = Math.min(maxTicketsAvailable, ticketCount + 1)" 
+                  :disabled="ticketCount >= maxTicketsAvailable"
+                >+</button>
+              </div>
+              <small class="text-muted">Maximum {{ maxTicketsAvailable }} tickets available</small>
             </div>
             
             <div class="payment-summary mt-4">
@@ -1082,5 +1168,71 @@ font-size: 1.5rem;
 .modal-content {
 margin: 1rem;
 }
+}
+/* Seat capacity styling */
+.text-danger {
+  color: #dc3545 !important;
+}
+
+.text-warning {
+  color: #ffc107 !important;
+}
+
+.text-success {
+  color: #28a745 !important;
+}
+
+.fw-bold {
+  font-weight: 700;
+}
+
+/* Disabled button styling */
+.btn-book.btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.btn-book:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Capacity alert in modal */
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.1);
+  border: 1px solid rgba(13, 202, 240, 0.3);
+  color: #0dcaf0;
+}
+
+.alert-info small {
+  font-size: 0.875rem;
+}
+
+
+.seats-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seats-badge.available {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.seats-badge.limited {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.seats-badge.full {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 </style>
