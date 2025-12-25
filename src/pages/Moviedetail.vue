@@ -378,8 +378,6 @@ const getAvailableSeatsCount = (show) => {
   return (show.Total_Capacity || 5) - (show.Booked_Seats || 0);
 };
 
-
-
 </script>
 
 <template>

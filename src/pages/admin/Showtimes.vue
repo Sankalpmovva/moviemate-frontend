@@ -140,17 +140,7 @@
           />
         </div>
 
-        <div class="col-md-2">
-          <label class="form-label small text-muted">Movie</label>
-          <select v-model="movieFilter" class="form-select form-select-sm">
-            <option value="all">All Movies</option>
-            <option v-for="movie in movies" :key="movie.Movie_ID" :value="movie.Movie_ID">
-              {{ movie.Title }}
-            </option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label small text-muted">Theatre</label>
           <select v-model="theatreFilter" class="form-select form-select-sm">
             <option value="all">All Theatres</option>
@@ -171,7 +161,7 @@
         </div>
 
     <div class="col-md-1 d-flex align-items-end">
-      <button class="btn btn-sm btn-secondary w-100" @click="resetFilters">
+      <button class="btn btn-sm btn-secondary w-150" @click="resetFilters">
         Reset
       </button>
     </div>
@@ -410,7 +400,6 @@ onMounted(async () => {
 
 // Filter state
 const searchQuery = ref('');
-const movieFilter = ref('all');
 const theatreFilter = ref('all');
 const dateFrom = ref('');
 const dateTo = ref('');
@@ -426,13 +415,6 @@ const filteredShowtimes = computed(() => {
       showtime.movies?.Title?.toLowerCase().includes(query) ||
       showtime.theaters?.Name?.toLowerCase().includes(query) ||
       showtime.theaters?.City?.toLowerCase().includes(query)
-    );
-  }
-  
-  // Movie filter
-  if (movieFilter.value !== 'all') {
-    result = result.filter(showtime => 
-      showtime.Movie_ID === parseInt(movieFilter.value)
     );
   }
   
