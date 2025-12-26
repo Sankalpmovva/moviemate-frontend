@@ -69,50 +69,85 @@ const loading = ref(false);
 const router = useRouter();
 const { login, googleLogin } = useAuth();
 
-
 onMounted(async () => {
-  const params = new URLSearchParams(window.location.search);
-  const hasToken = params.has('token');
-  const hasError = params.has('error');
+  console.log('🔍 Login page loaded - checking for Google callback');
   
-  if (hasToken || hasError) {
+  // Check for Google callback parameters
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const errorParam = params.get('error');
+  const success = params.get('success');
+  
+  console.log('URL parameters found:', { 
+    token: token ? '✅ Present' : '❌ Missing', 
+    error: errorParam || 'None',
+    success: success || 'None'
+  });
+  
+  if (token) {
+    console.log('✅ Google token found, processing login...');
     loading.value = true;
+    
     try {
-      const user = await handleGoogleCallback();
-      if (user) {
-        redirectAfterLogin(user);
-        return;
+      // Store the token immediately
+      localStorage.setItem('token', token);
+      console.log('Token stored in localStorage');
+      
+      // Decode the JWT token to get user info
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('Token payload:', payload);
+      
+      // Create user object
+      const userData = {
+        id: payload.accountId,
+        email: payload.email,
+        firstName: payload.firstName || '',
+        lastName: payload.lastName || '',
+        isAdmin: payload.isAdmin || false,
+        balance: 0
+      };
+      
+      console.log('User data:', userData);
+      
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log('User stored in localStorage');
+      
+      // Update the auth state immediately
+      const { user: authUser } = useAuth();
+      authUser.value = userData;
+      
+      console.log('✅ Google login successful! Redirecting...');
+      
+      // Clear the URL parameters (remove ?token=... from address bar)
+      window.history.replaceState({}, document.title, window.location.pathname);
+      console.log('URL parameters cleared');
+      
+      // Redirect based on user role
+      if (userData.isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/');
       }
+      
     } catch (err) {
-      error.value = err.message || 'Google login failed';
-    } finally {
+      console.error('❌ Error processing Google token:', err);
+      error.value = 'Failed to process Google login. Please try again.';
       loading.value = false;
     }
+    
+  } else if (errorParam) {
+    console.error('❌ Google returned error:', errorParam);
+    error.value = `Google login failed: ${errorParam}`;
+    loading.value = false;
   }
   
+  console.log('No Google callback detected, showing normal login form');
 });
 
 
 
-const loadGoogleScript = () => {
-  // Check if script is already loaded
-  if (window.google && window.google.accounts) {
-    console.log('Google API already loaded');
-    return;
-  }
 
-  const script = document.createElement('script');
-  script.src = 'https://accounts.google.com/gsi/client';
-  script.async = true;
-  script.defer = true;
-  script.onload = () => {
-    console.log('Google Identity Services loaded');
-  };
-  script.onerror = () => {
-    console.error('Failed to load Google Identity Services');
-  };
-  document.head.appendChild(script);
-};
 
 // Centralized redirect logic
 const redirectAfterLogin = (user) => {
