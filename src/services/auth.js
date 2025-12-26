@@ -74,7 +74,8 @@ export const useAuth = () => {
     register,
     logout,
     loadUser,
-    googleLogin
+  googleLogin: googleLoginRedirect, 
+  handleGoogleCallback,
   };
 };
 
@@ -167,63 +168,81 @@ export const cancelBooking = async (bookingId) => {
     throw err;
   }
 };
-
 // --------------------
-// Google OAuth login
+// Google OAuth login 
 // --------------------
-export const googleLogin = () => {
-  return new Promise((resolve, reject) => {
-    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-      reject(new Error('Google API not loaded. Please refresh the page.'));
-      return;
-    }
-    
-    try {
-      window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          try {
-            console.log('Google response received:', response);
-            
-            const res = await axios.post(`${API_BASE}/accounts/oauth/google`, { // Fixed
-              credential: response.credential
-            });
-            console.log('Backend response:', res.data);
-            
-            // Save JWT & user info with id field
-            const userData = {
-              id: res.data.user.id, // Add id field
-              ...res.data.user
-            };
-            
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(userData));
-            
-            user.value = userData;
-            
-            resolve(userData);
-          } catch (err) {
-            console.error('Error in Google callback:', err);
-            reject(err);
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true
-      });
-      
-      window.google.accounts.id.prompt((notification) => {
-        console.log('Google prompt notification:', notification);
-        
-        if (notification.isNotDisplayed()) {
-          reject(new Error('Google Sign-In popup was blocked. Please allow popups for this site.'));
-        } else if (notification.isSkippedMoment()) {
-          reject(new Error('Google Sign-In was skipped.'));
-        }
-      });
-      
-    } catch (err) {
-      console.error('Error initializing Google Sign-In:', err);
-      reject(err);
-    }
-  });
+export const googleLoginRedirect = () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:2112';
+  const frontendUrl = window.location.origin;
+  
+  // Simple redirect 
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(`${backendUrl}/accounts/oauth/google/callback`)}` +
+    `&response_type=code` +
+    `&scope=email%20profile` +
+    `&state=${encodeURIComponent(frontendUrl)}` +
+    `&prompt=select_account`;
+  
+  window.location.href = authUrl;
+  return Promise.resolve(); 
 };
+
+export const handleGoogleCallback = async () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const error = params.get('error');
+  
+  if (error) {
+    throw new Error(`Google login failed: ${error}`);
+  }
+  
+  if (token) {
+    try {
+    
+      localStorage.setItem('token', token);
+      
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      const userData = {
+        id: payload.accountId,
+        email: payload.email,
+        firstName: payload.firstName || '',
+        lastName: payload.lastName || '',
+        isAdmin: payload.isAdmin || false,
+        balance: 0  
+      };
+      
+     
+      localStorage.setItem('user', JSON.stringify(userData));
+      user.value = userData;
+      
+      try {
+        const userRes = await axios.get(`${API_BASE}/accounts/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+  
+        userData.balance = userRes.data.balance || 0;
+        localStorage.setItem('user', JSON.stringify(userData));
+        user.value = userData;
+      } catch (err) {
+        console.log('Could not fetch full profile, using token data:', err.message);
+        
+      }
+      
+    
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      return userData;
+    } catch (err) {
+      console.error('Error processing Google callback:', err);
+      throw new Error('Failed to process Google login');
+    }
+  }
+  
+  return null;
+};
+
+export const googleLogin = googleLoginRedirect; 

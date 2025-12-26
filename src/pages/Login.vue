@@ -59,7 +59,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../services/auth.js';
+import { useAuth, handleGoogleCallback, googleLoginRedirect } from '../services/auth.js';
 
 const email = ref('');
 const password = ref('');
@@ -69,10 +69,30 @@ const loading = ref(false);
 const router = useRouter();
 const { login, googleLogin } = useAuth();
 
-// Load Google API script
-onMounted(() => {
-  loadGoogleScript();
+
+onMounted(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const hasToken = params.has('token');
+  const hasError = params.has('error');
+  
+  if (hasToken || hasError) {
+    loading.value = true;
+    try {
+      const user = await handleGoogleCallback();
+      if (user) {
+        redirectAfterLogin(user);
+        return;
+      }
+    } catch (err) {
+      error.value = err.message || 'Google login failed';
+    } finally {
+      loading.value = false;
+    }
+  }
+  
 });
+
+
 
 const loadGoogleScript = () => {
   // Check if script is already loaded
@@ -119,19 +139,13 @@ const submit = async () => {
 };
 
 // Google OAuth login
-const handleGoogleLogin = async () => {
+const handleGoogleLogin = () => {
   error.value = '';
   loading.value = true;
-
-  try {
-    const user = await googleLogin();
-    redirectAfterLogin(user);
-  } catch (err) {
-    console.error('Google login error:', err);
-    error.value = err.message || 'Google login failed. Please try again.';
-  } finally {
-    loading.value = false;
-  }
+  
+  setTimeout(() => {
+    googleLoginRedirect(); 
+  }, 100);
 };
 </script>
 
