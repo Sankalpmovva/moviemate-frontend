@@ -109,7 +109,7 @@ onMounted(async () => {
       <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.1; background-image: url('data:image/svg+xml,%3Csvg width=%2720%27 height=%2720%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cpath d=%27M0 0h20v20H0z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%271%27/%3E%3C/svg%3E');"></div>
       <div class="container" style="position: relative; z-index: 1;">
         <h1 class="fw-bold" style="font-size: 3.5rem; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">NOW SHOWING</h1>
-        <p class="lead" style="font-size: 1.3rem; font-weight: 500; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">✨ Discover & Book Your Favorite Movies ✨</p>
+        <p class="lead" style="font-size: 1.3rem; font-weight: 500; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Discover & Book Your Favorite Movies</p>
       </div>
     </header>
 
