@@ -31,13 +31,7 @@
           <div class="notification-message">{{ notification.Message }}</div>
           <div class="notification-meta">
             <span class="notification-time">{{ formatTime(notification.Sent_At) }}</span>
-            <button 
-              @click="deleteNotification(notification.Notification_ID)" 
-              class="delete-btn"
-              title="Delete notification"
-            >
-              ×
-            </button>
+
           </div>
         </div>
       </div>
