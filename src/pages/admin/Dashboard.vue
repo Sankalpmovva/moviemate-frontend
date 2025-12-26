@@ -27,9 +27,6 @@
             <div class="stat-content">
               <h3 class="text-success">{{ formatCurrency(stats.totalRevenue) }}</h3>
               <p>Total Revenue</p>
-              <small :class="stats.revenueChange > 0 ? 'text-success' : 'text-danger'">
-                {{ stats.revenueChange > 0 ? '+' : '' }}{{ stats.revenueChange }}% this month
-              </small>
             </div>
           </div>
         </div>
@@ -66,9 +63,6 @@
             <div class="stat-content">
               <h3>{{ formatNumber(stats.activeShowtimes) }}</h3>
               <p>Active Showtimes</p>
-              <small class="text-muted">
-                {{ stats.upcomingShowtimes }} upcoming
-              </small>
             </div>
           </div>
         </div>
