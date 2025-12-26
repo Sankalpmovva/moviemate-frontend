@@ -55,6 +55,9 @@ const handleLogout = () => {
                 <router-link class="nav-link" to="/wallet">Wallet</router-link>
               </li>
               <li class="nav-item">
+                <router-link class="nav-link" to="/notifications">Notifications</router-link>
+              </li>
+              <li class="nav-item">
                 <button
                   class="btn btn-outline-light ms-2"
                   @click="handleLogout"

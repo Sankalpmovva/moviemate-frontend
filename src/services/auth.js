@@ -14,7 +14,6 @@ const user = ref(null);
 const loadUser = () => {
   const storedUser = localStorage.getItem('user');
   const token = localStorage.getItem('token');
-
   if (storedUser && token) {
     user.value = JSON.parse(storedUser);
   } else {
@@ -28,28 +27,25 @@ loadUser();
 // Auth actions
 // --------------------
 export const login = async (email, password) => {
-  const res = await axios.post(`${API_BASE}/accounts/login`, { email, password });
-
+  const res = await axios.post(`${API_BASE}/accounts/login`, { email, password }); 
   if (res.data.token) {
     const userData = {
+      id: res.data.user.id, 
       accountId: res.data.user.id,
       email: res.data.user.email,
       firstName: res.data.user.firstName,
       lastName: res.data.user.lastName,
       isAdmin: res.data.user.isAdmin   
     };
-
     localStorage.setItem('token', res.data.token);
     localStorage.setItem('user', JSON.stringify(userData));
     user.value = userData;
   }
-
-  return res.data.user; // return user for redirect logic
+  return res.data.user;
 };
 
-
 export const register = async (firstName, lastName, email, password) => {
-  return axios.post(`${API_BASE}/accounts/register`, { firstName, lastName, email, password });
+  return axios.post(`${API_BASE}/accounts/register`, { firstName, lastName, email, password }); // Fixed
 };
 
 export const logout = () => {
@@ -88,7 +84,7 @@ export const useAuth = () => {
 export const getAccount = async (accountId) => {
   if (!accountId) return null;
   try {
-    const res = await axios.get(`${API_BASE}/accounts/${accountId}`);
+    const res = await axios.get(`${API_BASE}/accounts/${accountId}`); 
     return res.data;
   } catch (err) {
     console.error('Error fetching account:', err);
@@ -99,7 +95,7 @@ export const getAccount = async (accountId) => {
 export const updateAccount = async (accountId, firstName, lastName) => {
   if (!accountId) return null;
   try {
-    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, { firstName, lastName });
+    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, { firstName, lastName }); // Fixed
     return res.data;
   } catch (err) {
     console.error('Error updating account:', err);
@@ -113,7 +109,7 @@ export const updateAccount = async (accountId, firstName, lastName) => {
 export const addBalance = async (accountId, amount) => {
   if (!accountId) return null;
   try {
-    const res = await axios.put(`${API_BASE}/accounts/${accountId}/add-balance`, { amount });
+    const res = await axios.put(`${API_BASE}/accounts/${accountId}/add-balance`, { amount }); // Fixed
     return res.data;
   } catch (err) {
     console.error('Error adding balance:', err);
@@ -124,24 +120,34 @@ export const addBalance = async (accountId, amount) => {
 // --------------------
 // Booking management
 // --------------------
-export const createBooking = async (showId, userId, tickets, totalPrice) => {
+export const createBooking = async (showId, accountId, tickets, totalPrice) => {
   try {
-    const res = await axios.post(`${API_BASE}/bookings/create`, {
-      Show_ID: showId,
-      User_ID: userId,
-      Tickets: tickets,
-      Total_Price: totalPrice
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE}/bookings/create`, { // Fixed
+      Show_ID: parseInt(showId),
+      User_ID: parseInt(accountId),
+      Tickets: parseInt(tickets),
+      Total_Price: parseFloat(totalPrice)
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
-    return res.data;
-  } catch (err) {
-    console.error('Error creating booking:', err);
-    throw err;
+    return response.data;
+  } catch (error) {
+    console.error('Booking error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
   }
 };
 
 export const getUserBookings = async (userId) => {
   try {
-    const res = await axios.get(`${API_BASE}/bookings?userId=${userId}`);
+    const res = await axios.get(`${API_BASE}/bookings?userId=${userId}`); // Fixed
     return res.data;
   } catch (err) {
     console.error('Error fetching bookings:', err);
@@ -154,7 +160,7 @@ export const getUserBookings = async (userId) => {
 // --------------------
 export const cancelBooking = async (bookingId) => {
   try {
-    const res = await axios.delete(`${API_BASE}/bookings/${bookingId}`);
+    const res = await axios.delete(`${API_BASE}/bookings/${bookingId}`); // Fixed
     return res.data;
   } catch (err) {
     console.error('Error cancelling booking:', err);
@@ -162,41 +168,40 @@ export const cancelBooking = async (bookingId) => {
   }
 };
 
-
 // --------------------
 // Google OAuth login
 // --------------------
 export const googleLogin = () => {
   return new Promise((resolve, reject) => {
-    // Check if Google API is loaded
     if (!window.google || !window.google.accounts || !window.google.accounts.id) {
       reject(new Error('Google API not loaded. Please refresh the page.'));
       return;
     }
-
+    
     try {
-      // Initialize Google Sign-In
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         callback: async (response) => {
           try {
             console.log('Google response received:', response);
             
-            // Send the credential to your backend
-            const res = await axios.post(`${API_BASE}/routes/accounts/oauth/google`, {
-              credential: response.credential  // Send the entire JWT credential
+            const res = await axios.post(`${API_BASE}/accounts/oauth/google`, { // Fixed
+              credential: response.credential
             });
-
             console.log('Backend response:', res.data);
             
-            // Save JWT & user info
+            // Save JWT & user info with id field
+            const userData = {
+              id: res.data.user.id, // Add id field
+              ...res.data.user
+            };
+            
             localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(res.data.user));
+            localStorage.setItem('user', JSON.stringify(userData));
             
-            // Update reactive user state
-            user.value = res.data.user;
+            user.value = userData;
             
-            resolve(res.data.user);
+            resolve(userData);
           } catch (err) {
             console.error('Error in Google callback:', err);
             reject(err);
@@ -206,7 +211,6 @@ export const googleLogin = () => {
         cancel_on_tap_outside: true
       });
       
-      // Trigger Google Sign-In popup
       window.google.accounts.id.prompt((notification) => {
         console.log('Google prompt notification:', notification);
         
@@ -215,7 +219,6 @@ export const googleLogin = () => {
         } else if (notification.isSkippedMoment()) {
           reject(new Error('Google Sign-In was skipped.'));
         }
-        
       });
       
     } catch (err) {

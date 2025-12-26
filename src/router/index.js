@@ -61,6 +61,9 @@ const routes = [
   },
   { path: '/forgot-password', component: ForgotPassword },
   { path: '/reset-password', name: 'reset-password', component: ResetPassword },
+  { path: '/notifications', 
+   component: () => import('../pages/NotificationsList.vue'), 
+   meta: { requiresAuth: true } },
   
 ];
 

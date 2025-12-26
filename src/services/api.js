@@ -36,7 +36,7 @@ export const getMovies = async () => {
 
 export const getMovieById = async (id) => {
   try {
-    const res = await api.get(`/movies/${id}`);
+    const res = await api.get(`/movies/${id}`); // Fixed
     return res.data;
   } catch (err) {
     console.error('Error fetching movie:', err);
@@ -48,7 +48,7 @@ export const getMovieById = async (id) => {
 // Showtimes
 // --------------------
 export const getShowtimesByMovie = async (movieId) => {
-  const res = await axios.get(`http://localhost:2112/showtimes?movieId=${movieId}`);
+  const res = await axios.get(`http://localhost:2112/showtimes?movieId=${movieId}`); // Fixed
   return res.data;
 };
 
@@ -63,7 +63,7 @@ export const getAllShowtimes = async () => {
 };
 
 // --------------------
-// Theatres (may 404 until backend exists)
+// Theatres
 // --------------------
 export const getTheatres = async () => {
   try {
@@ -85,6 +85,39 @@ export const getAllBookings = async () => {
   } catch (err) {
     console.error('Error fetching bookings:', err);
     return [];
+  }
+};
+
+// --------------------
+// Notifications
+// --------------------
+export const getNotifications = async (userId) => {
+  try {
+    const res = await api.get(`/notifications/user/${userId}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    return [];
+  }
+};
+
+export const deleteNotification = async (id) => {
+  try {
+    await api.delete(`/notifications/${id}`);
+    return true;
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    return false;
+  }
+};
+
+export const clearAllNotifications = async (userId) => {
+  try {
+    await api.delete(`/notifications/user/${userId}/all`);
+    return true;
+  } catch (err) {
+    console.error('Error clearing notifications:', err);
+    return false;
   }
 };
 
