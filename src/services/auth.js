@@ -83,9 +83,13 @@ export const useAuth = () => {
 // Account management
 // --------------------
 export const getAccount = async (accountId) => {
-  if (!accountId) return null;
+  
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = accountId || user?.id || user?.accountId;
+  
+  if (!userId) return null;
   try {
-    const res = await axios.get(`${API_BASE}/accounts/${accountId}`); 
+    const res = await axios.get(`${API_BASE}/accounts/${userId}`);
     return res.data;
   } catch (err) {
     console.error('Error fetching account:', err);
@@ -94,9 +98,12 @@ export const getAccount = async (accountId) => {
 };
 
 export const updateAccount = async (accountId, firstName, lastName) => {
-  if (!accountId) return null;
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = accountId || user?.id || user?.accountId;
+  
+  if (!userId) return null;
   try {
-    const res = await axios.put(`${API_BASE}/accounts/${accountId}`, { firstName, lastName }); // Fixed
+    const res = await axios.put(`${API_BASE}/accounts/${userId}`, { firstName, lastName });
     return res.data;
   } catch (err) {
     console.error('Error updating account:', err);
@@ -108,9 +115,13 @@ export const updateAccount = async (accountId, firstName, lastName) => {
 // Wallet / balance
 // --------------------
 export const addBalance = async (accountId, amount) => {
-  if (!accountId) return null;
+
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = accountId || user?.id || user?.accountId;
+  
+  if (!userId) return null;
   try {
-    const res = await axios.put(`${API_BASE}/accounts/${accountId}/add-balance`, { amount }); // Fixed
+    const res = await axios.put(`${API_BASE}/accounts/${userId}/add-balance`, { amount });
     return res.data;
   } catch (err) {
     console.error('Error adding balance:', err);
@@ -123,10 +134,18 @@ export const addBalance = async (accountId, amount) => {
 // --------------------
 export const createBooking = async (showId, accountId, tickets, totalPrice) => {
   try {
+   
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userId = accountId || user?.id || user?.accountId;
+    
+    if (!userId) {
+      throw new Error('User not logged in');
+    }
+    
     const token = localStorage.getItem('token');
-    const response = await axios.post(`${API_BASE}/bookings/create`, { // Fixed
+    const response = await axios.post(`${API_BASE}/bookings/create`, {
       Show_ID: parseInt(showId),
-      User_ID: parseInt(accountId),
+      User_ID: parseInt(userId),
       Tickets: parseInt(tickets),
       Total_Price: parseFloat(totalPrice)
     }, {
@@ -148,7 +167,18 @@ export const createBooking = async (showId, accountId, tickets, totalPrice) => {
 
 export const getUserBookings = async (userId) => {
   try {
-    const res = await axios.get(`${API_BASE}/bookings?userId=${userId}`); // Fixed
+    
+    const user = JSON.parse(localStorage.getItem('user'));
+    const accountId = userId || user?.id || user?.accountId;
+    
+    if (!accountId) {
+      console.error('No user ID found');
+      throw new Error('User not logged in');
+    }
+    
+    console.log('Fetching bookings for user ID:', accountId);
+    
+    const res = await axios.get(`${API_BASE}/bookings?userId=${accountId}`);
     return res.data;
   } catch (err) {
     console.error('Error fetching bookings:', err);
@@ -206,7 +236,8 @@ export const handleGoogleCallback = async () => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       
       const userData = {
-        id: payload.accountId,
+        id: payload.accountId || payload.id,
+        accountId: payload.accountId || payload.id,
         email: payload.email,
         firstName: payload.firstName || '',
         lastName: payload.lastName || '',

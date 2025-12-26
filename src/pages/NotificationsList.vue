@@ -57,7 +57,7 @@ const filteredNotifications = computed(() => {
 
 onMounted(() => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  userId.value = user.id;
+  userId.value = user.id || user.accountId;
   
   console.log('User ID from localStorage:', userId.value);
   

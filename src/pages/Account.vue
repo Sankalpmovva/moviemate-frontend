@@ -14,12 +14,13 @@ const loading = ref(true);
 
 // Load account info
 onMounted(async () => {
-  if (!user.value || !user.value.accountId) {
+  const userId = user.value?.id || user.value?.accountId;
+  if (!userId) {
     return;
   }
   
   try {
-    const accountData = await getAccount(user.value.accountId);
+    const accountData = await getAccount(userId);
     if (accountData) {
       firstName.value = accountData.First_Name || '';
       lastName.value = accountData.Last_Name || '';
@@ -36,7 +37,7 @@ onMounted(async () => {
 // Save changes
 const saveChanges = async () => {
   try {
-    const res = await updateAccount(user.value.accountId, firstName.value, lastName.value);
+    const res = await updateAccount(user.value?.id || user.value?.accountId, firstName.value, lastName.value);
     if (res) {
       message.value = 'Changes saved successfully!';
       setTimeout(() => {

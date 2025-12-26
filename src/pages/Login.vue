@@ -70,7 +70,7 @@ const router = useRouter();
 const { login, googleLogin } = useAuth();
 
 onMounted(async () => {
-  console.log('🔍 Login page loaded - checking for Google callback');
+  console.log('Login page loaded - checking for Google callback');
   
   // Check for Google callback parameters
   const params = new URLSearchParams(window.location.search);
@@ -79,13 +79,13 @@ onMounted(async () => {
   const success = params.get('success');
   
   console.log('URL parameters found:', { 
-    token: token ? '✅ Present' : '❌ Missing', 
+    token: token ? 'Present' : 'Missing', 
     error: errorParam || 'None',
     success: success || 'None'
   });
   
   if (token) {
-    console.log('✅ Google token found, processing login...');
+    console.log('Google token found, processing login...');
     loading.value = true;
     
     try {
@@ -117,7 +117,7 @@ onMounted(async () => {
       const { user: authUser } = useAuth();
       authUser.value = userData;
       
-      console.log('✅ Google login successful! Redirecting...');
+      console.log('Google login successful! Redirecting...');
       
       // Clear the URL parameters (remove ?token=... from address bar)
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -131,13 +131,13 @@ onMounted(async () => {
       }
       
     } catch (err) {
-      console.error('❌ Error processing Google token:', err);
+      console.error('Error processing Google token:', err);
       error.value = 'Failed to process Google login. Please try again.';
       loading.value = false;
     }
     
   } else if (errorParam) {
-    console.error('❌ Google returned error:', errorParam);
+    console.error('Google returned error:', errorParam);
     error.value = `Google login failed: ${errorParam}`;
     loading.value = false;
   }

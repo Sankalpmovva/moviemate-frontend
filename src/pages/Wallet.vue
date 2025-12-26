@@ -11,15 +11,21 @@ const loading = ref(true);
 const addingBalance = ref(false);
 const message = ref('');
 
+const getUserId = () => {
+  return user.value?.id || user.value?.accountId;
+};
+
 // Load wallet balance
 onMounted(async () => {
-  if (!user.value || !user.value.accountId) {
+  const userId = getUserId();
+  if (!userId) {
     loading.value = false;
+    router.push('/login');
     return;
   }
   
   try {
-    const accountData = await getAccount(user.value.accountId);
+    const accountData = await getAccount(userId);
     if (accountData && accountData.Account_Balance !== undefined) {
       balance.value = parseFloat(accountData.Account_Balance) || 0;
     }
@@ -37,7 +43,7 @@ const addFunds = async () => {
   message.value = '';
   
   try {
-    const res = await addBalance(user.value.accountId, 50);
+    const res = await addBalance(getUserId(), 50);
     if (res && res.newBalance !== undefined) {
       balance.value = parseFloat(res.newBalance);
       message.value = 'Successfully added €50 to your wallet!';
