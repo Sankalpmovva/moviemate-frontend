@@ -8,13 +8,14 @@ import {
   getAdminGenres,
   createAdminMovie,
   updateAdminMovie,
-  deleteAdminMovie
+  deleteAdminMovie,
 } from '../../services/admin.js';
 const importingFromTmdb = ref(false);
 const tmdbMessage = ref('');
 
 const router = useRouter();
 const { user, isLoggedIn } = useAuth();
+
 
 // Check if user is admin
 if (!isLoggedIn.value || !user.value) {
@@ -30,6 +31,8 @@ const searchQuery = ref('');
 const selectedMovieId = ref(null);
 const showForm = ref(false);
 const editMode = ref(false);
+const showDropdownResults = ref(false);
+
 
 const form = ref({
   Title: '',
@@ -84,6 +87,7 @@ const importFromTmdb = async () => {
     importingFromTmdb.value = false;
   }
 };
+
 // Fetch movies from API
 const fetchMovies = async () => {
   loading.value = true;
@@ -104,6 +108,16 @@ const fetchGenres = async () => {
     genres.value = await getAdminGenres();
   } catch (err) {
     console.error(err);
+  }
+};
+
+const onSearchInput = () => {
+  showDropdownResults.value = true;
+  
+  if (!searchQuery.value) {
+    setTimeout(() => {
+      showDropdownResults.value = false;
+    }, 300);
   }
 };
 
@@ -129,6 +143,8 @@ const handleSelectMovie = () => {
     showForm.value = true;
     editMode.value = true;
     populateForm(selectedMovie.value);
+    searchQuery.value = '';
+    showDropdownResults.value = false;
   }
 };
 
@@ -150,6 +166,8 @@ const handleAddNew = () => {
   showForm.value = true;
   editMode.value = false;
   selectedMovieId.value = null;
+  searchQuery.value = ''; 
+  showDropdownResults.value = false; 
   resetForm();
 };
 
@@ -211,12 +229,16 @@ const handleSave = async () => {
   }
 };
 
+
 // Cancel edit
 const handleCancel = () => {
   showForm.value = false;
   editMode.value = false;
   selectedMovieId.value = null;
+  searchQuery.value = ''; 
+  showDropdownResults.value = false; 
   resetForm();
+  
 };
 
 // Delete movie
@@ -294,7 +316,7 @@ onMounted(async () => {
         <div class="col-lg-5">
           <div class="selection-panel">
             <div class="panel-header">
-              <h5>Select Movie</h5>
+              <h5>Add new movie</h5>
               <div class="d-flex gap-2">
                 <button 
                   class="btn btn-info btn-sm" 
@@ -315,34 +337,45 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Search Bar -->
-            <div class="search-box">
-              <input
-                v-model="searchQuery"
-                type="text"
-                class="form-control"
-                placeholder="🔍 Search movies by title or genre..."
-              />
-            </div>
-
-            <!-- Movie Dropdown -->
-            <div class="movie-dropdown">
-              <label class="form-label">Select a movie to edit:</label>
-              <select 
-                v-model="selectedMovieId" 
-                class="form-select form-select-lg"
-                @change="handleSelectMovie"
-              >
-                <option :value="null">-- Choose a movie --</option>
-                <option 
-                  v-for="movie in filteredMovies" 
-                  :key="movie.Movie_ID" 
-                  :value="movie.Movie_ID"
+              <!-- Movie Dropdown with Search -->
+              <div class="movie-dropdown">
+                <label class="form-label">Select a movie to edit:</label>
+                <div class="dropdown-search-container">
+                  <!-- Search input in dropdown header -->
+                  <div class="dropdown-search-header mb-2">
+                    <input
+                      v-model="searchQuery"
+                      type="text"
+                      class="form-control form-control-sm"
+                      placeholder="🔍 Type to search movies..."
+                      @input="onSearchInput"
+                      @focus="showDropdownResults = true"
+                    />
+                  </div>
+    
+                <!-- Dropdown select with filtered results -->
+                <select 
+                  v-model="selectedMovieId" 
+                  class="form-select form-select-lg"
+                  @change="handleSelectMovie"
+                  :size="showDropdownResults ? Math.min(filteredMovies.length + 1, 8) : 1"
                 >
-                  {{ movie.Title }} ({{ movie.genres?.Name || 'No Genre' }}) - {{ movie.Release_Date?.split('T')[0] }}
-                </option>
-              </select>
-              <small class="text-muted">{{ filteredMovies.length }} movies available</small>
+                  <option :value="null">-- {{ searchQuery ? `Search results for "${searchQuery}"` : 'Choose a movie' }} --</option>
+                  <option 
+                    v-for="movie in filteredMovies" 
+                    :key="movie.Movie_ID" 
+                    :value="movie.Movie_ID"
+                  >
+                    {{ movie.Title }} ({{ movie.genres?.Name || 'No Genre' }}) - {{ movie.Release_Date?.split('T')[0] }}
+                  </option>
+                  <option v-if="filteredMovies.length === 0" value="" disabled>
+                    No movies found for "{{ searchQuery }}"
+                  </option>
+                </select>
+              </div>
+              <small class="text-muted">
+                {{ searchQuery ? `${filteredMovies.length} movies found` : `${movies.length} movies available` }}
+              </small>
             </div>
 
             <!-- Selected Movie Preview -->
@@ -394,13 +427,16 @@ onMounted(async () => {
                 <!-- Title -->
                 <div class="col-md-8">
                   <label class="form-label required">Title</label>
-                  <input 
-                    v-model="form.Title" 
-                    type="text" 
-                    class="form-control" 
-                    required
-                    placeholder="Enter movie title"
-                  />
+                  <div class="input-group">
+                    <input 
+                      v-model="form.Title" 
+                      type="text" 
+                      class="form-control" 
+                      required
+                      placeholder="Enter movie title"
+                      @input="clearTmdbSearch"
+                    />
+                  </div>
                 </div>
 
                 <!-- Rating -->
@@ -757,5 +793,82 @@ textarea:focus {
     gap: 1rem;
     align-items: flex-start;
   }
+}
+
+.input-group .btn-outline-info {
+  border-color: #0dcaf0;
+  color: #0dcaf0;
+}
+
+.input-group .btn-outline-info:hover {
+  background-color: #0dcaf0;
+  color: #000;
+}
+
+.input-group .btn-outline-info:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.dropdown-search-container {
+  position: relative;
+}
+
+.dropdown-search-header {
+  position: relative;
+}
+
+.dropdown-search-header input {
+  background: #0a0a0a;
+  border: 2px solid #333;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.dropdown-search-header input:focus {
+  background: #0a0a0a;
+  border-color: #ff6b00;
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.25);
+}
+
+.movie-dropdown select[multiple],
+.movie-dropdown select[size] {
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 300px;
+  font-size: 0.9rem;
+}
+
+.movie-dropdown select[size] option {
+  padding: 0.75rem;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.movie-dropdown select[size] option:hover {
+  background-color: #333;
+}
+
+.movie-dropdown select[size] option:first-child {
+  background-color: #2a2a2a;
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.movie-dropdown select[size] option:disabled {
+  background-color: #1a1a1a;
+  color: #666;
+  text-align: center;
+  font-style: italic;
+}
+
+.movie-dropdown select:not([size]):not([multiple]) {
+  height: auto;
 }
 </style>

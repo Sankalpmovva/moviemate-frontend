@@ -177,3 +177,18 @@ export const activateAdminUser = async (id) => {
   });
   return response.data;
 };
+
+//TMDB search function
+
+export const searchTmdbAdmin = async (title) => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE}/tmdb/search?title=${encodeURIComponent(title)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Error searching TMDB from admin:', err);
+    throw err;
+  }
+};
