@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useAuth, getUserBookings, cancelBooking } from '../services/auth.js';
 import { useRouter } from 'vue-router';
 
@@ -10,7 +10,23 @@ const bookings = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const cancellingBooking = ref(null);
+const selectedFilter = ref('all'); // 'all', 'confirmed', 'cancelled'
 
+const filteredBookings = computed(() => {
+  if (selectedFilter.value === 'all') {
+    return bookings.value;
+  }
+  
+  if (selectedFilter.value === 'confirmed') {
+    return bookings.value.filter(booking => booking.IsActive);
+  }
+  
+  if (selectedFilter.value === 'cancelled') {
+    return bookings.value.filter(booking => !booking.IsActive);
+  }
+  
+  return bookings.value;
+});
 onMounted(async () => {
   if (!isLoggedIn.value || !user.value) {
     router.push('/login');
@@ -64,6 +80,8 @@ const handleCancelBooking = async (bookingId) => {
     cancellingBooking.value = null;
   }
 };
+
+
 </script>
 
 <template>
@@ -71,22 +89,32 @@ const handleCancelBooking = async (bookingId) => {
     <h2>My Bookings</h2>
     <p class="text-muted">View all your movie bookings</p>
 
+    <div class="mb-3">
+      <label for="filter" class="form-label">Filter by Status:</label>
+      <select id="filter" v-model="selectedFilter" class="form-select">
+        <option value="all">All Bookings</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
+    
 
     <div v-else-if="error" class="alert alert-danger">
       {{ error }}
     </div>
 
-    <div v-else-if="bookings.length === 0" class="alert alert-info">
-      You don't have any bookings yet. <router-link to="/">Browse movies</router-link> to make your first booking!
+    <div v-else-if="filteredBookings.length === 0" class="alert alert-info">
+      No bookings found {{ selectedFilter !== 'all' ? 'for this filter' : '' }}. <router-link to="/">Browse movies</router-link> to make a booking!
     </div>
 
     <div v-else class="bookings-list">
-      <div v-for="booking in bookings" :key="booking.Booking_ID" class="booking-card">
+      <div v-for="booking in filteredBookings" :key="booking.Booking_ID" class="booking-card">
           <div class="booking-header">
             <h5>{{ booking.showtimes?.movies?.Title || 'Unknown Movie' }}</h5>
             <div class="d-flex gap-2 align-items-center">
@@ -182,5 +210,37 @@ const handleCancelBooking = async (bookingId) => {
   color: var(--primary-cyan);
   font-weight: 700;
   font-size: 1.1rem;
+}
+
+.bookings-filter-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.filter-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  min-width: 200px;
+}
+
+.filter-summary {
+  margin-top: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
 }
 </style>
